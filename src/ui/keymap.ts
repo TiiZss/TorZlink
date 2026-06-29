@@ -26,6 +26,7 @@ export const HELP_GROUPS: HelpGroup[] = [
     hints: [
       { keys: "/", label: "Edit search" },
       { keys: "↵", label: "Run search" },
+      { keys: "y", label: "Copy magnet" },
       { keys: "m", label: "Paste magnet" },
     ],
   },
@@ -92,6 +93,7 @@ export function footerHints(
   }
   return [
     { keys: "d", label: "Download" },
+    { keys: "y", label: "Copy magnet" },
     { keys: "/", label: "Search" },
     { keys: "m", label: "Paste magnet" },
     SWITCH,
