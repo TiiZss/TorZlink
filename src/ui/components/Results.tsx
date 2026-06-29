@@ -80,12 +80,25 @@ function Detail({ r, width }: { r: TorrentResult; width: number }) {
             </Text>
           }
         />
+        <DetailRow
+          label="Magnet"
+          value={
+            <Text color={COLOR.alt} dimColor wrap="truncate-end">
+              {r.magnet}
+            </Text>
+          }
+        />
       </Box>
       <Box marginTop={1}>
         <Text color={COLOR.accent} bold>
           d
         </Text>
         <Text color={COLOR.text}> Download</Text>
+        <Text dimColor>{`     ${ICON.dot}     `}</Text>
+        <Text color={COLOR.accent} bold>
+          y
+        </Text>
+        <Text color={COLOR.text}> Copy magnet</Text>
         <Text dimColor>{`     ${ICON.dot}     `}</Text>
         <Text color={COLOR.alt}>esc</Text>
         <Text dimColor> back</Text>
@@ -102,6 +115,7 @@ export function Results() {
     region,
     setCaptureMode,
     startDownload,
+    copyMagnet,
     contentWidth,
     listRows,
   } = useStore();
@@ -149,6 +163,9 @@ export function Results() {
       sizeBytes: r.sizeBytes,
     });
 
+  const copyResultMagnet = (r: TorrentResult): void =>
+    copyMagnet({ name: r.name, magnet: r.magnet });
+
   useInput(
     (input, key) => {
       if (input === "/") {
@@ -169,6 +186,9 @@ export function Results() {
       } else if (input === "d") {
         const r = results[clamped];
         if (r) openDownload(r);
+      } else if (input === "y") {
+        const r = results[clamped];
+        if (r) copyResultMagnet(r);
       }
     },
     { isActive: focused && mode === "list" },
@@ -180,6 +200,7 @@ export function Results() {
         setMode("list");
         setDetail(null);
       } else if (input === "d" && detail) openDownload(detail);
+      else if (input === "y" && detail) copyResultMagnet(detail);
     },
     { isActive: focused && mode === "detail" },
   );

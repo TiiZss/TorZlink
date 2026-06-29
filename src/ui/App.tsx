@@ -8,7 +8,7 @@ import { loadHistory } from "../download/history";
 import { reconcileQueue } from "../download/reconcile";
 import { parseMagnet } from "../sources/magnet";
 import { magnetFromTorrentFile } from "../sources/torrentFile";
-import { readClipboard } from "../util/clipboard";
+import { readClipboard, writeClipboard } from "../util/clipboard";
 import { cleanText, truncate } from "../util/format";
 import {
   StoreContext,
@@ -168,6 +168,17 @@ export function App({
     [config, queue],
   );
 
+  const copyMagnet = useCallback((input: { name: string; magnet: string }) => {
+    void (async () => {
+      const ok = await writeClipboard(input.magnet);
+      if (ok) {
+        setNotice(`Copied magnet: ${truncate(cleanText(input.magnet), 60)}`);
+        return;
+      }
+      setNotice(`Couldn't copy magnet for ${truncate(cleanText(input.name), 32)}.`);
+    })();
+  }, []);
+
   const submitQuery = useCallback(
     (raw: string) => {
       const q = raw.trim();
@@ -247,6 +258,7 @@ export function App({
       seedFocus,
       setSeedFocus,
       startDownload,
+      copyMagnet,
       notice,
       setNotice,
       quitAll,
@@ -269,6 +281,7 @@ export function App({
     downloadFocus,
     seedFocus,
     startDownload,
+    copyMagnet,
     notice,
     listRows,
     compact,

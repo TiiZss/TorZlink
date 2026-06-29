@@ -56,6 +56,7 @@ export interface Store {
     source?: SourceId;
     sizeBytes?: number;
   }) => void;
+  copyMagnet: (input: { name: string; magnet: string }) => void;
 
   notice: string | null;
   setNotice: (s: string | null) => void;
