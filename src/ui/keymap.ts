@@ -18,6 +18,7 @@ export const HELP_GROUPS: HelpGroup[] = [
       { keys: "↵", label: "Open" },
       { keys: "tab", label: "Switch pane" },
       { keys: "esc", label: "Back" },
+      { keys: "o", label: "Download folder" },
       { keys: "q", label: "Quit" },
     ],
   },
@@ -55,6 +56,8 @@ const ALWAYS: Hint = { keys: "?", label: "Keys" };
 
 const SWITCH: Hint = { keys: "tab", label: "Switch pane" };
 
+const FOLDER: Hint = { keys: "o", label: "Folder" };
+
 export function footerHints(
   region: Region,
   section: Section,
@@ -66,6 +69,7 @@ export function footerHints(
       NAVIGATE,
       { keys: "↵", label: "Open" },
       SWITCH,
+      FOLDER,
       ALWAYS,
       { keys: "q", label: "Quit" },
     ];

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useApp, useInput, useStdout, useStdin } from "ink";
 import { promises as fs } from "node:fs";
 import { loadConfig, saveConfig, type Config } from "../config/config";
+import { normalizeDownloadDir } from "../config/folder";
 import { DownloadQueue } from "../download/queue";
 import { loadQueue, loadSeeds } from "../download/persist";
 import { loadHistory } from "../download/history";
@@ -31,6 +32,7 @@ import { Seeding } from "./components/Seeding";
 import { Spinner } from "./components/Spinner";
 import { TabTitle } from "./components/TabTitle";
 import { Splash } from "./views/Splash";
+import { FolderPrompt } from "./components/FolderPrompt";
 import { footerHints } from "./keymap";
 import { COLOR, ICON } from "./theme";
 import { useMouseWheel } from "./hooks/useMouseWheel";
@@ -80,6 +82,7 @@ export function App({
   const [downloadFocus, setDownloadFocus] = useState<DownloadFocus | null>(null);
   const [seedFocus, setSeedFocus] = useState<SeedFocus | null>(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [editingFolder, setEditingFolder] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const booting = useRef(false);
 
@@ -149,6 +152,33 @@ export function App({
     setConfigState(c);
     void saveConfig(c);
   }, []);
+
+  const closeFolderPrompt = useCallback(() => {
+    setEditingFolder(false);
+    setCaptureMode("none");
+  }, []);
+
+  const setDownloadDir = useCallback(
+    (raw: string) => {
+      closeFolderPrompt();
+      const dir = normalizeDownloadDir(raw);
+      if (!config || !dir || dir === config.downloadDir) {
+        if (config && dir && dir === config.downloadDir) setNotice("Download folder unchanged.");
+        return;
+      }
+      void (async () => {
+        try {
+          await fs.mkdir(dir, { recursive: true });
+        } catch {
+          setNotice(`Couldn't use folder: ${truncate(dir, 48)}`);
+          return;
+        }
+        setConfig({ ...config, downloadDir: dir });
+        setNotice(`Download folder: ${truncate(dir, 48)}`);
+      })();
+    },
+    [config, setConfig, closeFolderPrompt],
+  );
 
   const startDownload = useCallback(
     (input: {
@@ -249,7 +279,7 @@ export function App({
       submitQuery,
       section,
       setSection,
-      region: showHelp ? "help" : region,
+      region: showHelp || editingFolder ? "help" : region,
       setRegion,
       captureMode,
       setCaptureMode,
@@ -277,6 +307,7 @@ export function App({
     section,
     region,
     showHelp,
+    editingFolder,
     captureMode,
     downloadFocus,
     seedFocus,
@@ -305,6 +336,12 @@ export function App({
       }
       if (input === "?") {
         setShowHelp(true);
+        return;
+      }
+      if (input === "o") {
+        setShowHelp(false);
+        setEditingFolder(true);
+        setCaptureMode("text");
         return;
       }
       if (input === "m") {
@@ -373,10 +410,21 @@ export function App({
           </Box>
         ) : null}
 
+        {editingFolder ? (
+          <Box marginTop={1}>
+            <FolderPrompt
+              width={Math.max(24, Math.min(cols - 4, 62))}
+              value={store.config.downloadDir}
+              onSubmit={setDownloadDir}
+              onCancel={closeFolderPrompt}
+            />
+          </Box>
+        ) : null}
+
         <Box
           height={bodyH}
           marginTop={compact ? 0 : 1}
-          display={showHelp ? "none" : "flex"}
+          display={showHelp || editingFolder ? "none" : "flex"}
           overflow="hidden"
         >
           <Sidebar />
@@ -392,7 +440,7 @@ export function App({
         </Box>
 
         {showFooter ? (
-          <Box display={showHelp ? "none" : "flex"}>
+          <Box display={showHelp || editingFolder ? "none" : "flex"}>
             <Footer hints={footerHints(region, section, downloadFocus, seedFocus)} />
           </Box>
         ) : null}
