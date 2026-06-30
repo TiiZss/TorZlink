@@ -155,7 +155,6 @@ export function App({
 
   const closeFolderPrompt = useCallback(() => {
     setEditingFolder(false);
-    setCaptureMode("none");
   }, []);
 
   const setDownloadDir = useCallback(
@@ -329,6 +328,7 @@ export function App({
         quitAll();
         return;
       }
+      if (editingFolder) return; // the folder prompt owns input (its own esc + enter)
       if (captureMode === "text") return;
       if (showHelp) {
         setShowHelp(false);
@@ -341,7 +341,6 @@ export function App({
       if (input === "o") {
         setShowHelp(false);
         setEditingFolder(true);
-        setCaptureMode("text");
         return;
       }
       if (input === "m") {

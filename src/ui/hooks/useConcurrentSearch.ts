@@ -42,6 +42,15 @@ function dedupe(list: TorrentResult[]): TorrentResult[] {
   return [...byHash.values()];
 }
 
+// torlink's default ordering: healthiest first. The results view can re-sort
+// on demand (the `s` key), and its "none"/default state preserves this order.
+function defaultOrder(list: TorrentResult[]): TorrentResult[] {
+  return list.sort((a, b) => {
+    if (b.seeders !== a.seeders) return b.seeders - a.seeders;
+    return (b.added ?? 0) - (a.added ?? 0);
+  });
+}
+
 function idleState(): ConcurrentSearchState {
   return {
     results: [],
@@ -98,7 +107,7 @@ export function useConcurrentSearch(query: string): ConcurrentSearchState {
           if (!alive) return;
           done += 1;
           setState({
-            results: dedupe(collected.slice()),
+            results: defaultOrder(dedupe(collected.slice())),
             perSource: { ...per },
             loading: done < SOURCES.length,
             done,

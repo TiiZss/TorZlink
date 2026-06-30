@@ -51,13 +51,13 @@ export const HELP_GROUPS: HelpGroup[] = [
   },
 ];
 
-const NAVIGATE: Hint = { keys: "↑ ↓ ← →", label: "Navigate content and panes" };
+// Footer labels stay terse so the contextual hint row never wraps; the `?`
+// overlay (HELP_GROUPS) carries the full, descriptive list.
+const NAVIGATE: Hint = { keys: "↑↓←→", label: "Move" };
 
 const ALWAYS: Hint = { keys: "?", label: "Keys" };
 
-const SWITCH: Hint = { keys: "tab", label: "Switch pane" };
-
-const FOLDER: Hint = { keys: "o", label: "Folder" };
+const SWITCH: Hint = { keys: "tab", label: "Switch" };
 
 export function footerHints(
   region: Region,
@@ -70,7 +70,6 @@ export function footerHints(
       NAVIGATE,
       { keys: "↵", label: "Open" },
       SWITCH,
-      FOLDER,
       ALWAYS,
       { keys: "q", label: "Quit" },
     ];
@@ -102,10 +101,9 @@ export function footerHints(
   return [
     NAVIGATE,
     { keys: "d", label: "Download" },
+    { keys: "y", label: "Copy" },
     { keys: "s", label: "Sort" },
-    { keys: "y", label: "Copy magnet" },
     { keys: "/", label: "Search" },
-    { keys: "m", label: "Paste magnet" },
     SWITCH,
     ALWAYS,
   ];
