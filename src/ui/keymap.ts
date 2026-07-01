@@ -53,7 +53,7 @@ export const HELP_GROUPS: HelpGroup[] = [
 
 // Footer labels stay terse so the contextual hint row never wraps; the `?`
 // overlay (HELP_GROUPS) carries the full, descriptive list.
-const NAVIGATE: Hint = { keys: "↑↓←→ hjkl", label: "Move" };
+const NAVIGATE: Hint = { keys: "↑↓←→", label: "Move" };
 
 const ALWAYS: Hint = { keys: "?", label: "Keys" };
 
