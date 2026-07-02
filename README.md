@@ -44,7 +44,7 @@ A short, hand-picked list of trusted sources:
 | --- | --- |
 | Games | FitGirl |
 | Movies | YTS, The Pirate Bay, 1337x |
-| TV | EZTV, SolidTorrents, The Pirate Bay, 1337x |
+| TV | EZTV, The Pirate Bay, 1337x |
 | Anime | Nyaa, SubsPlease |
 
 Games are the only category that can run code, so they come from FitGirl alone, a repacker with a long, trusted track record; everything else is plain video and subtitles. If a source is down, the search carries on without it, and torlink tells you which one is offline.

@@ -4,7 +4,6 @@ export type SourceId =
   | "eztv"
   | "nyaa"
   | "subsplease"
-  | "solid"
   | "tpb-movies"
   | "tpb-tv"
   | "x1337-movies"

@@ -2,7 +2,6 @@ import { eztv } from "./eztv";
 import { fitgirl } from "./fitgirl";
 import { nyaa } from "./nyaa";
 import { subsplease } from "./subsplease";
-import { solid } from "./solidtorrents";
 import { tpbMovies, tpbTv } from "./piratebay";
 import { x1337Movies, x1337Tv } from "./x1337";
 import { yts } from "./yts";
@@ -14,7 +13,6 @@ export const SOURCES: readonly Source[] = [
   tpbMovies,
   x1337Movies,
   eztv,
-  solid,
   tpbTv,
   x1337Tv,
   nyaa,

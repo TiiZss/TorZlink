@@ -9,7 +9,7 @@ import { useConcurrentSearch } from "../hooks/useConcurrentSearch";
 import { getSource, SOURCES } from "../../sources/registry";
 import { wrapStep, windowStart, resultsPanelOuter } from "../move";
 import { sortResults, nextSort, sortLabel, sortArrow, type Sort, type SortField } from "../sort";
-import { COLOR, GUTTER, ICON, SOURCE_STYLE } from "../theme";
+import { COLOR, GUTTER, ICON, sourceStyle } from "../theme";
 import { cleanText, formatBytes, formatRelative, truncate } from "../../util/format";
 import type { Source, TorrentResult } from "../../sources/types";
 
@@ -29,7 +29,7 @@ function DetailRow({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function Detail({ r, width }: { r: TorrentResult; width: number }) {
-  const ss = SOURCE_STYLE[r.source];
+  const ss = sourceStyle(r.source);
   const date = formatRelative(r.added);
   const health =
     r.seeders || r.leechers ? (
@@ -363,7 +363,7 @@ export function Results() {
                 {visible.map((r, i) => {
                   const index = start + i;
                   const here = index === clamped && focused && mode === "list";
-                  const ss = SOURCE_STYLE[r.source];
+                  const ss = sourceStyle(r.source);
                   return (
                     <Box key={r.infoHash}>
                       <Box width={GUTTER} flexShrink={0}>

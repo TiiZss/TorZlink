@@ -4,7 +4,7 @@ import { useStore, useQueueItems, useQueueHistory, type DownloadFocus } from "..
 import { Panel } from "./Panel";
 import { ProgressBar } from "./ProgressBar";
 import { wrapStep, windowStart } from "../move";
-import { COLOR, GUTTER, ICON, SOURCE_STYLE } from "../theme";
+import { COLOR, GUTTER, ICON, sourceStyle } from "../theme";
 import {
   cleanText,
   formatBytes,
@@ -146,7 +146,7 @@ export function Downloads() {
       {activeVisible.map((it, i) => {
         const here = activeStart + i === clamped && focused && inActive;
         const sc = statusColor(it.status);
-        const ss = SOURCE_STYLE[it.source ?? "fitgirl"];
+        const ss = sourceStyle(it.source);
         return (
           <Box key={it.id} flexDirection="column">
             <Box>
@@ -201,7 +201,7 @@ export function Downloads() {
 
       {recentVisible.map((h: HistoryItem, i) => {
         const here = recentStart + i === recentCursor && focused && !inActive;
-        const ss = SOURCE_STYLE[h.source ?? "fitgirl"];
+        const ss = sourceStyle(h.source);
         const when = formatRelative(h.completedAt / 1000);
         return (
           <Box key={h.id}>

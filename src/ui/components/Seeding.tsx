@@ -3,7 +3,7 @@ import { Box, Text, useInput } from "ink";
 import { useStore, useQueueHistory, useSeeds, type SeedFocus } from "../store";
 import { Panel } from "./Panel";
 import { wrapStep, windowStart } from "../move";
-import { COLOR, GUTTER, ICON, SOURCE_STYLE } from "../theme";
+import { COLOR, GUTTER, ICON, sourceStyle } from "../theme";
 import { cleanText, formatBytes, formatBytesPerSec, truncate } from "../../util/format";
 import type { SeedItem } from "../../download/types";
 
@@ -134,7 +134,7 @@ export function Seeding() {
           const seed = seeds.get(h.id);
           const g = glyph(seed);
           const st = statusCell(seed);
-          const ss = SOURCE_STYLE[h.source ?? "fitgirl"];
+          const ss = sourceStyle(h.source);
           return (
             <Box key={h.id}>
               <Box width={MARK} flexShrink={0}>
