@@ -11,8 +11,7 @@ export interface SourceState {
   count: number;
 }
 
-function errorCode(e: unknown, timedOut: boolean): string {
-  if (timedOut) return "timed out";
+function errorCode(e: unknown): string {
   if (e instanceof HttpError && e.status > 0) return `HTTP ${e.status}`;
   return "no response";
 }
@@ -24,8 +23,6 @@ export interface ConcurrentSearchState {
   done: number;
   total: number;
 }
-
-const PER_SOURCE_TIMEOUT_MS = 25000;
 
 function blankPerSource(loading: boolean): Record<SourceId, SourceState> {
   const out = {} as Record<SourceId, SourceState>;
@@ -80,12 +77,7 @@ export function useConcurrentSearch(query: string): ConcurrentSearchState {
     });
 
     for (const source of SOURCES) {
-      const sc = new AbortController();
-      const onAbort = (): void => sc.abort();
-      ctrl.signal.addEventListener("abort", onAbort);
-      const timer = setTimeout(() => sc.abort(), PER_SOURCE_TIMEOUT_MS);
-
-      cachedSearch(source, query, { signal: sc.signal })
+      cachedSearch(source, query, { signal: ctrl.signal })
         .then((res) => {
           if (!alive) return;
           collected.push(...res);
@@ -93,17 +85,14 @@ export function useConcurrentSearch(query: string): ConcurrentSearchState {
         })
         .catch((e: unknown) => {
           if (!alive || ctrl.signal.aborted) return;
-          const timedOut = sc.signal.aborted;
           per[source.id] = {
             loading: false,
-            error: timedOut ? "timed out" : e instanceof Error ? e.message : String(e),
-            code: errorCode(e, timedOut),
+            error: e instanceof Error ? e.message : String(e),
+            code: errorCode(e),
             count: 0,
           };
         })
         .finally(() => {
-          clearTimeout(timer);
-          ctrl.signal.removeEventListener("abort", onAbort);
           if (!alive) return;
           done += 1;
           setState({
