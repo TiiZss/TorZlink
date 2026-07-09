@@ -4,8 +4,8 @@ import { fileURLToPath } from "node:url";
 import React from "react";
 import { render } from "ink-testing-library";
 import { Box, Text } from "ink";
-import { StoreContext, type Store } from "../src/ui/store";
-import { COLOR, ICON, SOURCE_STYLE } from "../src/ui/theme";
+import { StoreContext, type Store } from "../src/ui/state/store";
+import { COLOR, ICON, SOURCE_STYLE } from "../src/ui/lib/theme";
 import { Logo } from "../src/ui/components/Logo";
 import { Rule } from "../src/ui/components/Rule";
 import { Footer } from "../src/ui/components/Footer";
@@ -13,7 +13,7 @@ import { Sidebar, RAIL_WIDTH } from "../src/ui/components/Sidebar";
 import { SearchBar } from "../src/ui/components/SearchBar";
 import { Panel } from "../src/ui/components/Panel";
 import { Downloads } from "../src/ui/components/Downloads";
-import { footerHints } from "../src/ui/keymap";
+import { footerHints } from "../src/ui/lib/keymap";
 import { sourcesByGroup } from "../src/sources/registry";
 import { cleanText, formatBytes, formatRelative } from "../src/util/format";
 import { ansiToSvg, type AnsiToSvgOptions } from "./ansi-to-svg";
@@ -26,7 +26,7 @@ import type { TorrentResult } from "../src/sources/types";
 const COLS = 80;
 const CONTENT_WIDTH = Math.max(24, COLS - RAIL_WIDTH - 3);
 const RULE_WIDTH = Math.max(10, COLS - 2);
-const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "preview");
+const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "assets", "preview");
 mkdirSync(OUT_DIR, { recursive: true });
 
 const NOW = Math.floor(Date.now() / 1000);
@@ -79,7 +79,7 @@ function makeStore(
 ): Store {
   const noop = (): void => {};
   return {
-    config: { downloadDir: "~/Downloads/torlink" } as Config,
+    config: { downloadDir: "~/Downloads/torzlink" } as Config,
     setConfig: noop,
     queue: fakeQueue(items, history, seeds),
     view: "browser",
@@ -129,9 +129,9 @@ function save(
   }
   writeFileSync(
     join(OUT_DIR, `${name}.svg`),
-    ansiToSvg(frame, { cols: COLS, title: "torlink", ...extra }),
+    ansiToSvg(frame, { cols: COLS, title: "TorZlink", ...extra }),
   );
-  console.log(`preview/${name}.svg`);
+  console.log(`assets/preview/${name}.svg`);
 }
 
 const CATEGORIES = sourcesByGroup()

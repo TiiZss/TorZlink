@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import type { Config } from "../config/config";
-import type { DownloadQueue } from "../download/queue";
-import type { HistoryItem } from "../download/history";
-import type { QueueItem, SeedItem } from "../download/types";
-import type { SourceGroup, SourceId } from "../sources/types";
+import type { Config } from "../../config/config";
+import type { DownloadQueue } from "../../download/queue";
+import type { HistoryItem } from "../../download/history";
+import type { QueueItem, SeedItem } from "../../download/types";
+import type { SourceGroup, SourceId } from "../../sources/types";
 
 export type View = "splash" | "browser";
 
@@ -65,7 +65,7 @@ export interface Store {
     source?: SourceId;
     sizeBytes?: number;
   }) => void;
-  copyMagnet: (input: { name: string; magnet: string }) => void;
+  copyMagnet: (input: { name: string; magnet: string; infoHash?: string }) => void;
   openDownloadFolder: (dir: string) => void;
   // Copies the cached .torrent metadata into the item's download folder and
   // reports the outcome through the notice line.

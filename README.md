@@ -1,31 +1,31 @@
 <p align="center">
-  <img src="preview/splash.svg" alt="torlink, curated torrents straight from your terminal" style="max-width: 832px; width: 100%; height: auto;">
+  <img src="assets/preview/splash.svg" alt="TorZlink — curated torrents straight from your terminal" style="max-width: 832px; width: 100%; height: auto;">
 </p>
 
 Finding a torrent these days sucks. One site is a minefield of fake download buttons. Another hides the real link under a popup that spawns two more tabs. And after all that, half the results are dead, zero seeders.
 
-torlink is a torrent finder that lives in your terminal, with zero setup and nothing to configure. One search checks a short, curated list of reputable sources at once, and whatever you pick downloads straight to your computer. The files are yours, saved to your downloads folder.
+TorZlink is a torrent finder that lives in your terminal, with zero setup and nothing to configure. One search checks a short, curated list of reputable sources at once, and whatever you pick downloads straight to your computer. The files are yours, saved to your downloads folder.
 
 > **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, and fixes for headless/container environments. See [Differences from upstream](#differences-from-upstream) and the [Changelog](CHANGELOG.md).
 
 ## Get started
 
-1. **Install Node** (from [nodejs.org](https://nodejs.org)), it's all torlink needs.
+1. **Install Node** (from [nodejs.org](https://nodejs.org)), it's all TorZlink needs.
 2. **Open your terminal.**
 3. **Start it:**
 
    ```sh
-   npx torlnk
+   npx torzlink
    ```
 
-That's the only thing you'll type. torlink opens straight to a search bar: search for what you want, paste in a magnet link or a bare infohash, or just press Enter on an empty box to browse the curated library. From there it's all keypresses, nothing to memorize, and `?` brings up the full list anytime.
+That's the only thing you'll type. TorZlink opens straight to a search bar: search for what you want, paste in a magnet link or a bare infohash, or just press Enter on an empty box to browse the curated library. From there it's all keypresses, nothing to memorize, and `?` brings up the full list anytime.
 
 ## Finding something
 
 Type what you're looking for and press Enter. Results stream in from every source as they answer, tagged with size and how many people are sharing each one, so you can see what'll come down fast. Arrow to what you want and press `d` to save it, or `shift+d` to pick a different folder for just that download.
 
 <p align="center">
-  <img src="preview/browse.svg" alt="torlink's browse view: the sidebar, the search bar, and merged results from every source" style="max-width: 832px; width: 100%; height: auto;">
+  <img src="assets/preview/browse.svg" alt="torlink's browse view: the sidebar, the search bar, and merged results from every source" style="max-width: 832px; width: 100%; height: auto;">
 </p>
 
 ## Your downloads
@@ -35,7 +35,7 @@ Active downloads sit up top with their progress, speed, and time left; when one 
 Downloads run in the background while you keep searching, so you can queue up as many as you want. They save to your downloads folder, and the Downloads pane keeps tabs on each one; press `o` anytime to change where that is, or grab one result with `shift+d` to send it somewhere else without touching the default. When something finishes it keeps seeding automatically so the next person can find it too, and the Seeding tab lets you pause or stop that anytime.
 
 <p align="center">
-  <img src="preview/downloads.svg" alt="torlink's Downloads pane: live progress on top, recently downloaded below" style="max-width: 832px; width: 100%; height: auto;">
+  <img src="assets/preview/downloads.svg" alt="torlink's Downloads pane: live progress on top, recently downloaded below" style="max-width: 832px; width: 100%; height: auto;">
 </p>
 
 ## What it searches
@@ -49,7 +49,7 @@ A short, hand-picked list of trusted sources:
 | TV | EZTV, The Pirate Bay, 1337x |
 | Anime | Nyaa, SubsPlease |
 
-Games are the only category that can run code, so they come from FitGirl alone, a repacker with a long, trusted track record; everything else is plain video and subtitles. If a source is down, the search carries on without it, and torlink tells you which one is offline.
+Games are the only category that can run code, so they come from FitGirl alone, a repacker with a long, trusted track record; everything else is plain video and subtitles. If a source is down, the search carries on without it, and TorZlink tells you which one is offline.
 
 ## Differences from upstream
 
@@ -60,20 +60,19 @@ Fork of [baairon/torlink](https://github.com/baairon/torlink). Core behaviour (s
 | **Run locally** | `npm install` then `npm run dev` | `npm run launch` + auto `ensure` on `dev`/`start` (Node check, install, update deps) |
 | **Node version** | Documented ≥ 22 | `.nvmrc` / `.node-version` + enforced in `ensure.cjs` |
 | **Docker** | Not provided | Multi-stage image, `docker-compose.yml`, `npm run docker:run` |
-| **Download directory** | OS default only | `TORLINK_DOWNLOAD_DIR` env override (required for Docker volumes) |
-| **State / config dir** | `env-paths` default | `TORLINK_STATE_DIR` override |
-| **Clipboard (copy magnet)** | OS clipboard (`xclip`, etc.) | Same + **file fallback** at `$TORLINK_STATE_DIR/clipboard.txt` when headless |
-| **WebTorrent in Docker** | N/A | NAT-PMP, UPnP, uTP disabled (`TORLINK_DISABLE_NAT` / `/.dockerenv`) to avoid crashes |
-| **TTY / Ink** | Assumes interactive terminal | Startup check + `useSafeInput`; clear message if `-it` missing |
-| **CI** | Upstream workflow | Matrix: Linux, macOS, Windows + Docker build |
-| **Self-update** | npm package update on `torlnk` binary | Same for published binary; `TORLNK_SKIP_UPDATE=1` in Docker/CI |
+| **Download directory** | OS default only | `TORZLINK_DOWNLOAD_DIR` (legacy `TORLINK_*` supported) |
+| **State / config dir** | `env-paths` default | `TORZLINK_STATE_DIR` override; migrates from upstream `torlink` data |
+| **Clipboard (copy magnet)** | OS clipboard (`xclip`, etc.) | Same + **named `.magnet` files** in downloads when headless/Docker |
+| **WebTorrent in Docker** | N/A | NAT-PMP, UPnP, uTP disabled (`TORZLINK_DISABLE_NAT` / `/.dockerenv`) |
+| **Telegram** | N/A | Optional notifications via `.env` (copy, start, complete, error) |
+| **Self-update** | npm package update on `torlnk` binary | `torzlink` binary; `TORZLINK_SKIP_UPDATE=1` in Docker/CI |
 | **Repository** | `baairon/torlink` | `TiiZss/TorZlink` |
 
 Full version history: [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
-To run or work on torlink locally:
+To run or work on TorZlink locally:
 
 1. Clone the repository and open the folder:
 
@@ -96,40 +95,56 @@ To run or work on torlink locally:
    npm run dev
    ```
 
-   `npm run dev` and `npm start` also run the ensure step automatically (`predev` / `prestart`), which checks Node, installs missing packages, and updates outdated ones. Set `TORLNK_SKIP_UPDATE=1` to skip updates (useful in CI).
+   `npm run dev` and `npm start` also run the ensure step automatically (`predev` / `prestart`), which checks Node, installs missing packages, and updates outdated ones. Set `TORZLINK_SKIP_UPDATE=1` to skip updates (useful in CI).
 
 4. Or build it and run the bundled version:
 
    ```sh
    npm run build
-   npx torlnk
+   npx torzlink
    ```
 
-   The `torlnk` binary checks for newer releases on startup and updates itself when possible.
+   The `torzlink` binary checks for newer releases on startup and updates itself when possible.
+
+Save `.env` and source files as **UTF-8** (no BOM on Windows).
+
+### Telegram (optional)
+
+Copy `.env.example` to `.env` and set:
+
+```env
+TELEGRAM_ENABLED=1
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_CHANNEL_ID=@your_channel
+```
+
+The bot must be an **admin** of the channel to post. TorZlink notifies on magnet copy (`y`), download start (`d`), completion, and errors. Telegram failures are logged to stderr only — the TUI keeps running.
+
+`docker-compose.yml` loads `.env` automatically via `env_file`.
 
 ### Docker
 
 Interactive TUI (downloads persist in `./downloads`, state in a named volume):
 
 ```sh
-docker compose build
+docker compose -f packaging/docker/docker-compose.yml build
 npm run docker:run
 ```
 
 (`docker:run` adds the required `-it` flags. Without them Ink cannot read keyboard input.)
 
-**Docker Desktop:** `docker compose run --rm` creates a one-off container (name like `torlink-torlnk-run-…`) that only appears under **Containers** while the TUI is running. When you quit or the app exits, `--rm` removes it immediately — that is expected, not a bug.
+**Docker Desktop:** `docker compose run --rm` creates a one-off container (name like `torzlink-torzlink-run-…`) that only appears under **Containers** while the TUI is running. When you quit or the app exits, `--rm` removes it immediately — that is expected, not a bug.
 
-Build the image manually (tags it as `torlnk:latest`):
+Build the image manually (tags it as `torzlink:latest`):
 
 ```sh
-docker build -t torlnk:latest .
+docker build -f packaging/docker/Dockerfile -t torzlink:latest .
 docker run --rm -it \
-  -e TORLINK_STATE_DIR=/data \
-  -e TORLINK_DOWNLOAD_DIR=/downloads \
-  -v torlnk-data:/data \
+  -e TORZLINK_STATE_DIR=/data \
+  -e TORZLINK_DOWNLOAD_DIR=/downloads \
+  -v torzlink-data:/data \
   -v "%cd%/downloads:/downloads" \
-  torlnk:latest
+  torzlink:latest
 ```
 
 On Linux/macOS, replace `%cd%` with `$(pwd)`.
@@ -149,14 +164,14 @@ Problems encountered while building and running this fork, and how they were fix
 **Fix:** The deps stage runs `npm install --omit=dev` **without** `--ignore-scripts`, and verifies the `.node` file exists. Rebuild:
 
 ```sh
-docker compose build --no-cache
+docker compose -f packaging/docker/docker-compose.yml build --no-cache
 ```
 
-### `torlnk:latest` not found
+### `torzlink:latest` not found
 
-**Symptom:** `docker run torlnk:latest` fails with image not found.
+**Symptom:** `docker run torzlink:latest` fails with image not found.
 
-**Fix:** Build first (`docker compose build` or `docker build -t torlnk:latest .`). Compose and `npm run docker:build` tag the image as `torlnk:latest`.
+**Fix:** Build first (`docker compose -f packaging/docker/docker-compose.yml build` or `docker build -f packaging/docker/Dockerfile -t torzlink:latest .`). Compose and `npm run docker:build` tag the image as `torzlink:latest`.
 
 ### `Raw mode is not supported` (Ink / stdin)
 
@@ -169,7 +184,7 @@ docker compose build --no-cache
 ```sh
 npm run docker:run
 # or
-docker compose run --rm -it torlnk
+docker compose -f packaging/docker/docker-compose.yml run --rm -it torzlink
 ```
 
 The app also prints this hint at startup if stdin/stdout are not TTYs.
@@ -180,21 +195,15 @@ The app also prints this hint at startup if stdin/stdout are not TTYs.
 
 **Cause:** WebTorrent's NAT-PMP, UPnP, and uTP native bindings misbehave in restricted container networks.
 
-**Fix:** Set `TORLINK_DISABLE_NAT=1` (already default in `docker-compose.yml` and the Dockerfile). Downloads work; port mapping may be limited inside the container.
+**Fix:** Set `TORZLINK_DISABLE_NAT=1` (already default in `docker-compose.yml` and the Dockerfile).
 
 ### Copy magnet fails in Docker
 
-**Symptom:** "Could not copy to clipboard" or empty clipboard after `c`.
+**Symptom:** "Couldn't copy magnet" after `y`.
 
 **Cause:** No X11 `DISPLAY`; `xclip` cannot reach a desktop clipboard.
 
-**Fix:** Magnet text is written to **`/data/clipboard.txt`** (or `$TORLINK_STATE_DIR/clipboard.txt`). Read it from the host:
-
-```sh
-docker compose run --rm torlnk cat /data/clipboard.txt
-```
-
-Or set `TORLINK_CLIPBOARD_FILE` to a mounted path.
+**Fix:** Magnet text is written to **`./downloads/{torrent-name}.magnet`** on your host (sanitized title; collision adds a short info-hash suffix). In Docker there is no desktop clipboard — the `.magnet` file in `downloads` is the copy.
 
 ### Downloads not appearing on the host
 
@@ -202,9 +211,9 @@ Or set `TORLINK_CLIPBOARD_FILE` to a mounted path.
 
 **Cause:** Default download path inside the container is not the mounted volume.
 
-**Fix:** Ensure `TORLINK_DOWNLOAD_DIR=/downloads` and mount `./downloads:/downloads` (as in `docker-compose.yml`).
+**Fix:** Ensure `TORZLINK_DOWNLOAD_DIR=/downloads` and mount `./downloads:/downloads` (as in `docker-compose.yml`).
 
-### `torlnk requires Node.js v22 or later`
+### `TorZlink requires Node.js v22 or later`
 
 **Symptom:** Ensure script exits before starting.
 
@@ -214,7 +223,7 @@ Or set `TORLINK_CLIPBOARD_FILE` to a mounted path.
 
 **Symptom:** `ensure.cjs` runs `npm update` when you only want to run tests.
 
-**Fix:** `TORLNK_SKIP_UPDATE=1` (CI and Docker already set this). Node version is still checked.
+**Fix:** `TORZLINK_SKIP_UPDATE=1` (CI and Docker already set this). Node version is still checked.
 
 ### macOS: crash when download starts (upstream behaviour)
 
@@ -264,7 +273,7 @@ kanban
 | ✅ Done | CI on three OS + Docker build |
 | ✅ Done | Release workflow (`.github/workflows/release.yml`) |
 | ✅ Done | Documentation (changelog, troubleshooting, upstream diff) |
-| ✅ Done | Docker build verified on Windows (`torlnk:latest`) |
+| ✅ Done | Docker build verified on Windows (`torzlink:latest`) |
 | 📋 Next | Commit, push to `TiiZss/TorZlink`, tag `v1.3.0` → triggers GHCR + Release |
 | 📋 Planned | Manual TUI download smoke test in Docker |
 | 📋 Planned | Headless or scripted magnet workflow |
@@ -287,7 +296,7 @@ The `release` workflow runs tests, publishes `ghcr.io/tiizss/torzlink:latest`, a
 
 ## Privacy
 
-Your files stay on your disk, and nothing routes through a central server; torlink only talks to the torrent network directly. Once a download finishes it keeps seeding by default, sharing it back so the next person can find it just as easily. The network only works because people pass things along, and even a few minutes makes a real difference. If you'd rather not, opt out anytime: open the Seeding tab, press `p` to pause or stop any item, and press it again to pick it back up. Always your call.
+Your files stay on your disk, and nothing routes through a central server; TorZlink only talks to the torrent network directly. Once a download finishes it keeps seeding by default, sharing it back so the next person can find it just as easily. The network only works because people pass things along, and even a few minutes makes a real difference. If you'd rather not, opt out anytime: open the Seeding tab, press `p` to pause or stop any item, and press it again to pick it back up. Always your call.
 
 ## Star History
 

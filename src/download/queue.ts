@@ -170,6 +170,7 @@ export class DownloadQueue extends EventEmitter {
           this.changed();
           void this.persist();
           this.maybeStopPoll();
+          this.emit("failed", it);
           return;
         }
         const sd = this.seeds.get(id);
@@ -192,7 +193,7 @@ export class DownloadQueue extends EventEmitter {
     // Opt-out seeding: a finished download is already a complete, verified
     // torrent, so keep it alive and seeding instead of tearing it down.
     this.beginSeed(it);
-    this.emit("completed", it.name);
+    this.emit("completed", it);
     this.changed();
     void this.persist();
     this.maybeStopPoll();

@@ -1,0 +1,40 @@
+services:
+
+  torzlink:
+
+    build:
+      context: ../..
+      dockerfile: packaging/docker/Dockerfile
+
+    image: torzlink:latest
+
+    stdin_open: true
+
+    tty: true
+
+    env_file:
+      - ../../.env
+
+    environment:
+
+      TORZLINK_STATE_DIR: /data
+
+      TORZLINK_DOWNLOAD_DIR: /downloads
+
+      TORZLINK_DISABLE_NAT: "1"
+
+      TORZLINK_SKIP_UPDATE: "1"
+
+    volumes:
+
+      - torzlink-data:/data
+
+      - ../../downloads:/downloads
+
+    # TTY required (-it). Easiest: npm run docker:run
+
+
+
+volumes:
+
+  torzlink-data:

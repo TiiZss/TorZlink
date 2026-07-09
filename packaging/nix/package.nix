@@ -10,8 +10,8 @@
 }:
 
 buildNpmPackage (finalAttrs: {
-  pname = "torlink";
-  version = "1.3.1";
+  pname = "torzlink";
+  version = "1.4.0";
   __structuredAttrs = true;
   strictDeps = true;
 
@@ -42,8 +42,8 @@ buildNpmPackage (finalAttrs: {
   # add wl-copy and xclip to nix readeable path
   postInstall = ''
     tar -xzf ${finalAttrs.nodeDatachannelPrebuilt} \
-      -C $out/lib/node_modules/torlnk/node_modules/node-datachannel
-      wrapProgram $out/bin/torlnk \
+      -C $out/lib/node_modules/torzlink/node_modules/node-datachannel
+      wrapProgram $out/bin/torzlink \
         --prefix PATH : ${
           lib.makeBinPath [
             wl-clipboard
@@ -53,12 +53,12 @@ buildNpmPackage (finalAttrs: {
   '';
 
   meta = {
-    description = "Torlink is a torrent finder that lives in your terminal, with zero setup and nothing to configure.";
+    description = "TorZlink is a torrent finder that lives in your terminal, with zero setup and nothing to configure.";
     homepage = "https://github.com/TiiZss/TorZlink";
     changelog = "https://github.com/TiiZss/TorZlink/releases/tag/v${finalAttrs.src.tag}";
     license = lib.licenses.mit;
     maintainers = with lib.maintainers; [ ghastrum ];
-    mainProgram = "torlnk";
+    mainProgram = "torzlink";
     platforms = lib.platforms.linux;
   };
 })

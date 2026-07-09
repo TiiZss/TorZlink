@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import WebTorrent, { type Torrent } from "webtorrent";
+import { envFlag } from "../config/env-vars";
 
 export interface TorrentProgress {
   progress: number;
@@ -40,7 +41,7 @@ export function webTorrentClientOpts(): {
   utp?: boolean;
 } {
   if (process.platform === "darwin") return { natPmp: false };
-  if (process.env.TORLINK_DISABLE_NAT === "1" || existsSync("/.dockerenv")) {
+  if (envFlag("TORZLINK_DISABLE_NAT", "TORLINK_DISABLE_NAT") || existsSync("/.dockerenv")) {
     return { natPmp: false, natUpnp: false, utp: false };
   }
   return {};

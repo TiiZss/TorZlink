@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Box, Text } from "ink";
 import { useSafeInput } from "../hooks/useSafeInput";
-import { useStore, CATEGORIES } from "../store";
+import { useStore, CATEGORIES } from "../state/store";
 import { Spinner } from "./Spinner";
 import { SearchBar } from "./SearchBar";
 import { Panel } from "./Panel";
 import { Rule } from "./Rule";
 import { useConcurrentSearch } from "../hooks/useConcurrentSearch";
 import { getSource, SOURCES } from "../../sources/registry";
-import { stickCursor, wrapStep, windowStart, resultsPanelOuter } from "../move";
-import { sortResults, nextSort, sortLabel, sortArrow, type Sort, type SortField } from "../sort";
-import { filterResults } from "../filter";
-import { COLOR, GUTTER, ICON, sourceStyle } from "../theme";
+import { stickCursor, wrapStep, windowStart, resultsPanelOuter } from "../lib/move";
+import { sortResults, nextSort, sortLabel, sortArrow, type Sort, type SortField } from "../lib/sort";
+import { filterResults } from "../lib/filter";
+import { COLOR, GUTTER, ICON, sourceStyle } from "../lib/theme";
 import { cleanText, formatBytes, formatCount, formatRelative, stripControl, truncate } from "../../util/format";
 import type { Source, TorrentResult } from "../../sources/types";
 
@@ -190,7 +190,7 @@ export function Results() {
     });
 
   const copyResultMagnet = (r: TorrentResult): void =>
-    copyMagnet({ name: r.name, magnet: r.magnet });
+    copyMagnet({ name: r.name, magnet: r.magnet, infoHash: r.infoHash });
 
   const moveTo = (n: number): void => {
     setCursor(n);

@@ -1,14 +1,14 @@
 {
-  "name": "torlnk",
-  "version": "1.3.1",
-  "description": "A sleek, zero-setup torrent finder and downloader that lives right in your terminal.",
+  "name": "torzlink",
+  "version": "1.4.0",
+  "description": "TorZlink — a sleek, zero-setup torrent finder and downloader in your terminal.",
   "type": "module",
   "bin": {
-    "torlnk": "./dist/cli.cjs"
+    "torzlink": "./dist/cli.cjs"
   },
   "files": [
     "dist",
-    "preview"
+    "assets/preview"
   ],
   "engines": {
     "node": ">=22"
@@ -18,18 +18,18 @@
     "ensure:dev": "node scripts/ensure.cjs --dev",
     "predev": "node scripts/ensure.cjs --dev",
     "prestart": "node scripts/ensure.cjs",
-    "launch": "node scripts/ensure.cjs --dev && tsx src/index.tsx",
-    "dev": "tsx src/index.tsx",
+    "launch": "node scripts/ensure.cjs --dev && tsx src/app/entry.tsx",
+    "dev": "tsx src/app/entry.tsx",
     "build": "tsup",
     "postbuild": "node scripts/postbuild.cjs",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && node --test scripts/ensure.test.cjs",
-    "verify:seeding": "tsx scripts/verify-seeding.ts",
-    "previews": "tsx scripts/render-previews.tsx",
+    "verify:seeding": "tsx tools/verify-seeding.ts",
+    "previews": "tsx tools/render-previews.tsx",
     "prepublishOnly": "npm run build",
-    "docker:build": "docker compose build",
-    "docker:run": "docker compose run --rm -it torlnk"
+    "docker:build": "docker compose -f packaging/docker/docker-compose.yml build",
+    "docker:run": "docker compose -f packaging/docker/docker-compose.yml build --quiet torzlink && docker compose -f packaging/docker/docker-compose.yml run --rm -it torzlink"
   },
   "keywords": [
     "torrent",
@@ -63,6 +63,7 @@
     "access": "public"
   },
   "dependencies": {
+    "dotenv": "^16.6.1",
     "env-paths": "^4.0.0",
     "ink": "^7.0.5",
     "parse-torrent": "^11.0.21",

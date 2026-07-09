@@ -10,7 +10,14 @@ import { loadHistory } from "../download/history";
 import { reconcileQueue } from "../download/reconcile";
 import { parseInput } from "../sources/magnet";
 import { magnetFromTorrentFile } from "../sources/torrentFile";
-import { readClipboard, writeClipboard, clipboardFallbackFile } from "../util/clipboard";
+import { readClipboard, writeClipboard, lastClipboardFile, saveMagnetFile } from "../util/clipboard";
+import {
+  notifyMagnetCopied,
+  notifyDownloadStarted,
+  notifyDownloadCompleted,
+  notifyDownloadFailed,
+} from "../integrations/notify";
+import type { QueueItem } from "../download/types";
 import { openFolder } from "../util/openFolder";
 import { cleanText, formatBytes, truncate } from "../util/format";
 import {
@@ -22,7 +29,7 @@ import {
   type SeedFocus,
   type Store,
   type View,
-} from "./store";
+} from "./state/store";
 import { Logo } from "./components/Logo";
 import { Sidebar, RAIL_WIDTH } from "./components/Sidebar";
 import { Rule } from "./components/Rule";
@@ -36,8 +43,8 @@ import { TabTitle } from "./components/TabTitle";
 import { Splash } from "./views/Splash";
 import { FolderPrompt } from "./components/FolderPrompt";
 import { TrackersPrompt } from "./components/TrackersPrompt";
-import { footerHints } from "./keymap";
-import { COLOR, ICON } from "./theme";
+import { footerHints } from "./lib/keymap";
+import { COLOR, ICON } from "./lib/theme";
 import { useMouseWheel } from "./hooks/useMouseWheel";
 import type { SourceId } from "../sources/types";
 
@@ -141,11 +148,23 @@ export function App({
 
   useEffect(() => {
     if (!queue) return;
-    const onCompleted = (name: string): void =>
-      setNotice(`${ICON.done} ${truncate(cleanText(name), 40)}`);
+    const onCompleted = (it: QueueItem): void => {
+      setNotice(`${ICON.done} ${truncate(cleanText(it.name), 40)}`);
+      notifyDownloadCompleted({ name: it.name, magnet: it.magnet, infoHash: it.id });
+    };
+    const onFailed = (it: QueueItem): void => {
+      notifyDownloadFailed({
+        name: it.name,
+        magnet: it.magnet,
+        infoHash: it.id,
+        error: it.error,
+      });
+    };
     queue.on("completed", onCompleted);
+    queue.on("failed", onFailed);
     return () => {
       queue.off("completed", onCompleted);
+      queue.off("failed", onFailed);
     };
   }, [queue]);
 
@@ -231,6 +250,13 @@ export function App({
       if (!config || !queue) return;
       void fs.mkdir(config.downloadDir, { recursive: true }).catch(() => {});
       queue.add(input, config.downloadDir);
+      void saveMagnetFile(input.magnet, { name: input.name, infoHash: input.id });
+      notifyDownloadStarted({
+        name: input.name,
+        magnet: input.magnet,
+        infoHash: input.id,
+        dir: config.downloadDir,
+      });
       setNotice(`Added: ${truncate(cleanText(input.name), 40)}`);
       setSection("downloads");
       setRegion("content");
@@ -278,6 +304,13 @@ export function App({
         }
         setLastDownloadToDir(dir);
         queue.add(input, dir);
+        void saveMagnetFile(input.magnet, { name: input.name, infoHash: input.id });
+        notifyDownloadStarted({
+          name: input.name,
+          magnet: input.magnet,
+          infoHash: input.id,
+          dir,
+        });
         setNotice(`Added: ${truncate(cleanText(input.name), 28)} → ${truncate(dir, 36)}`);
         setSection("downloads");
         setRegion("content");
@@ -286,23 +319,22 @@ export function App({
     [queue, pendingDownload],
   );
 
-  const copyMagnet = useCallback((input: { name: string; magnet: string }) => {
+  const copyMagnet = useCallback((input: { name: string; magnet: string; infoHash?: string }) => {
     void (async () => {
-      const ok = await writeClipboard(input.magnet);
+      const meta = { name: input.name, infoHash: input.infoHash };
+      const ok = await writeClipboard(input.magnet, meta);
       if (ok) {
-        const file = clipboardFallbackFile();
-        if (file) {
-          try {
-            const saved = await fs.readFile(file, "utf8");
-            if (saved === input.magnet) {
-              setNotice(`Magnet saved to ${truncate(file, 48)}`);
-              return;
-            }
-          } catch {
-            /* OS clipboard was used */
-          }
+        const saved = lastClipboardFile();
+        if (saved) {
+          setNotice(`Magnet saved to ${truncate(saved, 48)}`);
+        } else {
+          setNotice(`Copied magnet: ${truncate(cleanText(input.magnet), 60)}`);
         }
-        setNotice(`Copied magnet: ${truncate(cleanText(input.magnet), 60)}`);
+        notifyMagnetCopied({
+          name: input.name,
+          magnet: input.magnet,
+          infoHash: input.infoHash,
+        });
         return;
       }
       setNotice(`Couldn't copy magnet for ${truncate(cleanText(input.name), 32)}.`);
@@ -519,7 +551,7 @@ export function App({
   if (!store) {
     return (
       <Box height={rows} justifyContent="center" alignItems="center">
-        <Spinner label="Starting torlink" />
+        <Spinner label="Starting TorZlink" />
       </Box>
     );
   }

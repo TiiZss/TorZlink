@@ -18,13 +18,13 @@ export function parseCliArgs(argv: string[]): CliCommand {
   return { kind: "invalid", arg: a };
 }
 
-export const HELP_TEXT = `torlink, terminal-native torrent search
+export const HELP_TEXT = `TorZlink — terminal-native torrent search
 
 usage
-  torlnk                      open the search TUI
-  torlnk "magnet:?xt=..."     start a download on launch
-  torlnk path/to/file.torrent open a .torrent file on launch
-  torlnk --version            print the version
+  torzlink                      open the search TUI
+  torzlink "magnet:?xt=..."     start a download on launch
+  torzlink path/to/file.torrent open a .torrent file on launch
+  torzlink --version            print the version
 
 once open: type to search every source at once, enter to run, arrows to move,
 d to download, ? for keys

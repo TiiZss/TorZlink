@@ -13,8 +13,8 @@ describe("writeClipboard file fallback", () => {
   let tmpDir: string;
 
   beforeEach(async () => {
-    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "torlnk-clip-"));
-    process.env.TORLINK_STATE_DIR = tmpDir;
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "torzlink-clip-"));
+    process.env.TORZLINK_STATE_DIR = tmpDir;
     Object.defineProperty(process, "platform", { value: "linux" });
     vi.resetModules();
     spawn.mockReset();
@@ -35,16 +35,29 @@ describe("writeClipboard file fallback", () => {
 
   afterEach(async () => {
     Object.defineProperty(process, "platform", { value: originalPlatform });
-    delete process.env.TORLINK_STATE_DIR;
+    delete process.env.TORZLINK_STATE_DIR;
+    delete process.env.TORZLINK_DOWNLOAD_DIR;
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
   it("writes to clipboard.txt when OS clipboard tools fail", async () => {
-    const { writeClipboard, clipboardFallbackFile } = await import("./clipboard");
+    const { writeClipboard, clipboardFallbackFile } = await import("../../src/util/clipboard");
     const magnet = "magnet:?xt=urn:btih:abc";
     await expect(writeClipboard(magnet)).resolves.toBe(true);
     const file = clipboardFallbackFile();
     expect(file).toBeTruthy();
     await expect(fs.readFile(file!, "utf8")).resolves.toBe(magnet);
+  });
+
+  it("writes named .magnet file when OS clipboard tools fail", async () => {
+    const dl = path.join(tmpDir, "downloads");
+    await fs.mkdir(dl, { recursive: true });
+    process.env.TORZLINK_DOWNLOAD_DIR = dl;
+    const { writeClipboard } = await import("../../src/util/clipboard");
+    const magnet = "magnet:?xt=urn:btih:def";
+    const name = "Super Movie 2026";
+    await expect(writeClipboard(magnet, { name, infoHash: "deadbeef" })).resolves.toBe(true);
+    const file = path.join(dl, "Super Movie 2026.magnet");
+    await expect(fs.readFile(file, "utf8")).resolves.toBe(magnet);
   });
 });

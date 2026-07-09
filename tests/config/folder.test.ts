@@ -1,6 +1,6 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { expandHome, normalizeDownloadDir } from "./folder";
+import { expandHome, normalizeDownloadDir } from "../../src/config/folder";
 
 const HOME = path.join(path.sep, "home", "ada");
 
@@ -33,8 +33,8 @@ describe("normalizeDownloadDir", () => {
   });
 
   it("normalizes a tilde path into a usable directory", () => {
-    expect(normalizeDownloadDir("~/Downloads/torlink", HOME)).toBe(
-      path.normalize(path.join(HOME, "Downloads", "torlink")),
+    expect(normalizeDownloadDir("~/Downloads/torzlink", HOME)).toBe(
+      path.normalize(path.join(HOME, "Downloads", "torzlink")),
     );
   });
 });

@@ -21,20 +21,22 @@ RUN npm run build
 # ── runtime: minimal image with clipboard helper ────────────────────────────
 FROM node:22-alpine AS runtime
 RUN apk add --no-cache tini xclip \
-  && addgroup -S torlnk \
-  && adduser -S torlnk -G torlnk
+  && addgroup -S torzlink \
+  && adduser -S torzlink -G torzlink \
+  && mkdir -p /data /downloads \
+  && chown -R torzlink:torzlink /data /downloads
 WORKDIR /app
-ENV NODE_ENV=production \
-    TORLNK_SKIP_UPDATE=1 \
-    TORLINK_STATE_DIR=/data \
-    TORLINK_DOWNLOAD_DIR=/downloads \
-    TORLINK_DISABLE_NAT=1
-COPY --from=build --chown=torlnk:torlnk /app/dist ./dist
-COPY --from=deps --chown=torlnk:torlnk /app/node_modules ./node_modules
-COPY --chown=torlnk:torlnk package.json ./
-USER torlnk
+ENV LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    NODE_ENV=production \
+    TORZLINK_SKIP_UPDATE=1 \
+    TORZLINK_STATE_DIR=/data \
+    TORZLINK_DOWNLOAD_DIR=/downloads \
+    TORZLINK_DISABLE_NAT=1
+COPY --from=build --chown=torzlink:torzlink /app/dist ./dist
+COPY --from=deps --chown=torzlink:torzlink /app/node_modules ./node_modules
+COPY --chown=torzlink:torzlink package.json ./
+USER torzlink
 VOLUME ["/data", "/downloads"]
-ENV TORLINK_STATE_DIR=/data \
-    TORLINK_DOWNLOAD_DIR=/downloads
 ENTRYPOINT ["/sbin/tini", "--", "node", "dist/cli.cjs"]
 CMD []
