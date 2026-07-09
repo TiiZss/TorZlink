@@ -1,5 +1,5 @@
 {
-  description = "Torlink is a torrent finder that lives in your terminal, with zero setup and nothing to configure.";
+  description = "TorZlink is a torrent finder that lives in your terminal, with zero setup and nothing to configure.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -22,11 +22,11 @@
           pkgs = nixpkgs.legacyPackages.${system};
         in
         {
-          default = pkgs.callPackage ./nix/package.nix { };
+          default = pkgs.callPackage ./packaging/nix/package.nix { };
         }
       );
       overlays.default = final: prev: {
-        torlink = final.callPackage ./nix/package.nix { };
+        torzlink = final.callPackage ./packaging/nix/package.nix { };
       };
 
     };

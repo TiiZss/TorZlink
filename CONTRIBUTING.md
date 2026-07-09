@@ -1,81 +1,58 @@
-# Contributing to torlink
+# Contributing to TorZlink
 
-torlink stays small on purpose. The best way in is to read the code you're about to touch, match how it already works, and keep your change tight. Three recent pull requests set the bar, and this guide points back at them throughout:
+TorZlink stays small on purpose. The best way in is to read the code you're about to touch, match how it already works, and keep your change tight. Three recent pull requests set the bar, and this guide points back at them throughout:
 
 - [#4](https://github.com/baairon/torlink/pull/4) gave the arrow keys spatial pane navigation without breaking a single existing shortcut.
 - [#5](https://github.com/baairon/torlink/pull/5) turned a cryptic crash on old Node into a one-line "upgrade me" message.
 - [#6](https://github.com/baairon/torlink/pull/6) added copy-magnet, cross-platform, with tests.
 
-None of them were big. All of them fit the grain. That's the whole idea.
+## Repository layout
 
-## Set up
-
-```sh
-git clone https://github.com/TiiZss/TorZlink
-cd TorZlink
-npm run launch
+```
+src/app/          entry point (Ink TUI)
+src/config/       paths, config, .env loading
+src/download/     queue, engine, persistence
+src/integrations/ Telegram + notify hub
+src/sources/      search adapters
+src/ui/           components, state, views
+assets/preview/   README screenshots (SVG)
+packaging/docker/ Dockerfile + compose
+packaging/nix/    Nix package
+tools/            dev utilities (previews, seeding check)
+tests/            Vitest (mirrors src/)
 ```
 
-`npm run launch` runs the ensure step (Node check, `npm install` if needed, `npm update` for outdated packages) and then starts the live TUI. The same ensure logic runs on `npm run dev` and `npm start` via npm lifecycle hooks.
+Save source files and `.env` as **UTF-8** (no BOM on Windows). `.editorconfig` and `.gitattributes` enforce this in the repo.
 
-Skip auto-updates in CI or when you need a frozen tree:
-
-```sh
-TORLNK_SKIP_UPDATE=1 npm run dev
-```
-
-The README's [Contributing](README.md#contributing) section covers Docker and the build variant.
+Local AI agent rules (`.agents/`, `.cursor/rules/`, etc.) are **not** versioned — keep your own copy per machine.
 
 ## Before you open a PR
 
-Run these and make sure they're clean:
-
 ```sh
-npm run typecheck   # tsc --noEmit, zero errors
-npm test            # vitest, all green
+npm run launch          # or npm run dev after first install
+npm test
+npm run build
 ```
 
-Then check your change against the standards below. The pull request template walks you through the same list.
+In CI or when you want to skip dependency self-update:
 
-## The standards
+```sh
+TORZLINK_SKIP_UPDATE=1 npm run dev
+```
 
-### Match the existing grain
+## Cross-platform
 
-Reuse what's there before you write something new. Cursor movement goes through `wrapStep` (`src/ui/move.ts`). Key hints live in the `Hint` / `HELP_GROUPS` / `footerHints` system (`src/ui/keymap.ts`). Shared app state is the `Store` interface (`src/ui/store.ts`).
+TorZlink runs on Windows, macOS, and Linux, so anything that touches the OS branches all three. Look at `writeClipboard` in `src/util/clipboard.ts` from #6: `clip.exe` / PowerShell on win32, pbcopy on darwin, then wl-copy, xclip, xsel on linux. #5's `scripts/cli-entry.cjs` is the same instinct aimed at the Node runtime. "Works on my machine" is not the bar.
 
-#4 is the model here: it added a whole navigation mode and still introduced no new state, it leaned on the existing `region` and `captureMode` flags and reused `wrapStep`. If you catch yourself adding a parallel way to do something the codebase already does, stop and use the one that's already there.
+## UI conventions
 
-### Stay additive, never break muscle memory
+TorZlink shows one contextual footer plus a `?` cheatsheet, never a wall of commands. Two rules when you add to it:
 
-People already have the current keys in their fingers. New behavior should layer on, not overwrite. #4 lit up the arrow keys (which did nothing before) while leaving tab, enter, esc, and every letter command exactly where they were. If your change retrains an existing key, it needs a real reason and a clear note in the PR.
+1. Only show keys that work in the current pane and mode.
+2. If a key does two things depending on context, the footer shows the one that applies now.
 
-### Cross-platform or it doesn't ship
+## Visual style
 
-torlink runs on Windows, macOS, and Linux, so anything that touches the OS branches all three. Look at `writeClipboard` in `src/util/clipboard.ts` from #6: powershell on win32, pbcopy on darwin, then wl-copy, xclip, xsel on linux. #5's `scripts/cli-entry.cjs` is the same instinct aimed at the Node runtime. "Works on my machine" is not the bar.
+TorZlink is pastel-violet and quiet. There is exactly one gradient, the wordmark sheen. Everything else is solid color. Please don't add a second gradient.
 
-### Fail soft, never crash
-
-When something the user can't control goes wrong, degrade gracefully and say so. #5 prints a friendly upgrade message and exits cleanly instead of letting old Node spit out a parse error. #6's `writeClipboard` returns `false` and surfaces a notice when no clipboard tool exists, it never throws. Reach for a clear message and a fallback before you reach for an exception.
-
-### Test the logic
-
-Non-trivial logic gets a vitest test. Pure functions are easy, see `src/util/format.test.ts`. For code that shells out or leans on a platform, mock the node built-in, see `src/util/clipboard.test.ts` from #6 mocking `node:child_process`. Run the suite with `npm test`.
-
-### Wire the UI surface, and keep it minimal
-
-torlink shows one contextual footer plus a `?` cheatsheet, never a wall of commands. Two rules when you add to it:
-
-- A new key means updating both halves of `src/ui/keymap.ts`: `HELP_GROUPS` (the `?` sheet) and `footerHints` (the footer). #6 did both for `y`.
-- A new `Store` field means adding a matching entry to `makeStore` in `scripts/render-previews-impl.tsx`, or `npm run previews` (the README screenshots) breaks. #6's `copyMagnet` sits in there as a noop for exactly this reason.
-
-### Respect the calm theme
-
-torlink is pastel-violet and quiet. There is exactly one gradient, the wordmark sheen. Everything else is solid color. Please don't add a second gradient.
-
-## Commits and pull requests
-
-- Use [Conventional Commits](https://www.conventionalcommits.org) prefixes: `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`.
-- Say why, not just what. The diff already shows the what.
-- One concern per pull request. Two unrelated ideas are two PRs.
-
-Thanks for helping keep torlink sharp.
+Thanks for helping keep TorZlink sharp.

@@ -26,7 +26,7 @@ afterEach(() => {
 
 describe("TorrentEngine macOS port-5350 fix (#22)", () => {
   it("passes natPmp:false on macOS so mDNSResponder's port 5350 is never bound", async () => {
-    const { TorrentEngine } = await import("./engine");
+    const { TorrentEngine } = await import("../../src/download/engine");
     const original = process.platform;
     Object.defineProperty(process, "platform", { value: "darwin" });
     try {
@@ -45,10 +45,10 @@ describe("TorrentEngine macOS port-5350 fix (#22)", () => {
     expect(constructorCalls[0]).toMatchObject({ natPmp: false });
   });
 
-  it("disables NAT traversal in Docker (TORLINK_DISABLE_NAT)", async () => {
-    const { TorrentEngine } = await import("./engine");
-    const original = process.env.TORLINK_DISABLE_NAT;
-    process.env.TORLINK_DISABLE_NAT = "1";
+  it("disables NAT traversal when TORZLINK_DISABLE_NAT is set", async () => {
+    const { TorrentEngine } = await import("../../src/download/engine");
+    const original = process.env.TORZLINK_DISABLE_NAT;
+    process.env.TORZLINK_DISABLE_NAT = "1";
     try {
       const engine = new TorrentEngine();
       engine.add(
@@ -59,15 +59,15 @@ describe("TorrentEngine macOS port-5350 fix (#22)", () => {
       );
       engine.destroy();
     } finally {
-      if (original === undefined) delete process.env.TORLINK_DISABLE_NAT;
-      else process.env.TORLINK_DISABLE_NAT = original;
+      if (original === undefined) delete process.env.TORZLINK_DISABLE_NAT;
+      else process.env.TORZLINK_DISABLE_NAT = original;
     }
     expect(constructorCalls).toHaveLength(1);
     expect(constructorCalls[0]).toMatchObject({ natPmp: false, natUpnp: false, utp: false });
   });
 
   it("does not disable natPmp on Linux (port 5350 is free)", async () => {
-    const { TorrentEngine } = await import("./engine");
+    const { TorrentEngine } = await import("../../src/download/engine");
     const original = process.platform;
     Object.defineProperty(process, "platform", { value: "linux" });
     try {
@@ -87,7 +87,7 @@ describe("TorrentEngine macOS port-5350 fix (#22)", () => {
   });
 
   it("does not disable natPmp on Windows (port 5350 is free)", async () => {
-    const { TorrentEngine } = await import("./engine");
+    const { TorrentEngine } = await import("../../src/download/engine");
     const original = process.platform;
     Object.defineProperty(process, "platform", { value: "win32" });
     try {

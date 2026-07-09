@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import { configFile, defaultDownloadDir } from "./paths";
+import { envVar } from "./env-vars";
 import { serializeWrites, writeJsonAtomic } from "../util/atomic";
 
 export interface Config {
@@ -23,7 +24,7 @@ export async function loadConfig(): Promise<Config> {
     const parsed = JSON.parse(raw) as Partial<Config>;
     const cfg: Config = {
       downloadDir:
-        process.env.TORLINK_DOWNLOAD_DIR?.trim() ||
+        envVar("TORZLINK_DOWNLOAD_DIR", "TORLINK_DOWNLOAD_DIR") ||
         (typeof parsed.downloadDir === "string" && parsed.downloadDir
           ? parsed.downloadDir
           : defaultDownloadDir),

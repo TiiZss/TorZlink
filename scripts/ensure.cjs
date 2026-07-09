@@ -21,6 +21,7 @@ function log(msg, quiet) {
 
 function shouldSkip() {
   return (
+    process.env.TORZLINK_SKIP_UPDATE === '1' ||
     process.env.TORLNK_SKIP_UPDATE === '1' ||
     process.env.CI === 'true' ||
     process.env.CI === '1'
@@ -31,7 +32,7 @@ function checkNode() {
   const major = parseInt(process.versions.node.split('.')[0], 10);
   if (major < 22) {
     process.stderr.write(
-      '\ntorlnk requires Node.js v22 or later.\n' +
+      '\nTorZlink requires Node.js v22 or later.\n' +
         `You are running v${process.versions.node}.\n\n` +
         'Upgrade:  https://nodejs.org\n' +
         'With nvm: nvm install 22 && nvm use 22\n\n'
@@ -105,10 +106,10 @@ function isDevProject(root) {
 function ensureNodeModules(root, quiet) {
   if (existsSync(resolve(root, 'node_modules'))) return;
 
-  log('torlnk: installing dependencies…', quiet);
+  log('torzlink: installing dependencies…', quiet);
   const install = runNpm(['install'], { cwd: root, stdio: 'inherit' });
   if (install.status !== 0) {
-    process.stderr.write('torlnk: npm install failed.\n');
+    process.stderr.write('torzlink: npm install failed.\n');
     process.exit(install.status || 1);
   }
 }
@@ -120,11 +121,11 @@ function updateDependencies(root, quiet, includeDev) {
   const count = countOutdated(outdated.stdout);
   if (count === 0) return;
 
-  log(`torlnk: updating ${count} package(s)…`, quiet);
+  log(`torzlink: updating ${count} package(s)…`, quiet);
   const args = includeDev ? ['update'] : ['update', '--omit=dev'];
   const update = runNpm(args, { cwd: root, stdio: 'inherit' });
   if (update.status !== 0) {
-    log('torlnk: npm update had issues; continuing anyway.', quiet);
+    log('torzlink: npm update had issues; continuing anyway.', quiet);
   }
 }
 
@@ -132,20 +133,20 @@ function updateSelf(pkg, quiet) {
   const latest = getLatestNpmVersion(pkg.name);
   if (!latest || !semverLt(pkg.version, latest)) return false;
 
-  log(`torlnk: ${pkg.version} → ${latest}, updating…`, quiet);
+  log(`torzlink: ${pkg.version} → ${latest}, updating…`, quiet);
   const globalUpdate = runNpm(['install', '-g', `${pkg.name}@latest`], { stdio: 'inherit' });
   if (globalUpdate.status === 0) {
-    log('torlnk: updated. Restart torlnk to use the new version.', quiet);
+    log('torzlink: updated. Restart torzlink to use the new version.', quiet);
     return true;
   }
 
   const localUpdate = runNpm(['install', `${pkg.name}@latest`], { cwd: ROOT, stdio: 'inherit' });
   if (localUpdate.status === 0) {
-    log('torlnk: updated local install.', quiet);
+    log('torzlink: updated local install.', quiet);
     return true;
   }
 
-  log(`torlnk: update available (${latest}) but auto-update failed. Run: npm install -g ${pkg.name}@latest`, quiet);
+  log(`torzlink: update available (${latest}) but auto-update failed. Run: npm install -g ${pkg.name}@latest`, quiet);
   return false;
 }
 

@@ -133,3 +133,16 @@ export function truncate(s: string, max: number): string {
   if (max <= 1) return s.slice(0, Math.max(0, max));
   return s.length <= max ? s : s.slice(0, max - 1) + "…";
 }
+
+const INVALID_FILENAME = /[<>:"/\\|?*\x00-\x1f]/g;
+
+/** Safe filename stem for magnet sidecar files (UTF-8 NFC, cross-platform). */
+export function sanitizeFilename(name: string, maxLen = 120): string {
+  let out = "";
+  for (const ch of name.normalize("NFC")) {
+    if (!isControlCodePoint(ch.codePointAt(0)!)) out += ch;
+  }
+  out = out.replace(INVALID_FILENAME, "").replace(/\s+/g, " ").trim();
+  if (out.length > maxLen) out = out.slice(0, maxLen).trim();
+  return out || "Untitled";
+}

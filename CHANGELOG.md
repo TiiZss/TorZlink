@@ -11,6 +11,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Manual smoke test: interactive download in Docker TUI on Windows host
 - Optional non-interactive mode for magnet-only workflows
 
+## [1.4.0] — 2026-07-09
+
+Major fork release: rebrand to **TorZlink** / `torzlink`, repo restructure, optional Telegram notifications, and named magnet sidecar files in Docker.
+
+**Verified:** full test suite; `npm run build`; Docker image `torzlink:latest`.
+
+### Added
+
+- **Rebrand** — UI/docs use **TorZlink**; npm binary and Docker image use `torzlink` (no `torlnk` alias)
+- **UTF-8 baseline** — `.editorconfig`, `.gitattributes`, `LANG=C.UTF-8` in Docker; explicit `utf8` on file I/O
+- **`.env` support** — `dotenv` loads `.env` from cwd; see `.env.example`
+- **Telegram notifications** (optional) — magnet copied, download started/completed/failed via Bot API
+- **Named magnet files** — in Docker/headless, `y` (copy) and `d` (download) write `{torrent-name}.magnet` under downloads (not a single `magnet.txt`)
+- **Repo layout** — `src/app/entry.tsx`, `src/integrations/`, `assets/preview/`, `packaging/docker/`, `tools/`, `tests/` mirror
+- **Migration** — `TORZLINK_*` env vars with fallback to legacy `TORLINK_*` / `TORLNK_SKIP_UPDATE`; state dir falls back to upstream `torlink` data if present
+- **Tests** — `env.test.ts`, `telegram.test.ts`, `magnet-file.test.ts`; updated clipboard fallback tests
+
+### Changed
+
+- Default download folder: `~/Downloads/torzlink`
+- Docker Compose service/image: `torzlink:latest`; `env_file: .env` for Telegram
+- Queue `completed` / `failed` events now pass the full queue item (for notifications)
+
+### Security
+
+- `.env` gitignored; bot token never logged
+- Telegram sends are fire-and-forget (errors to stderr only)
+
 ## [1.3.0] — 2026-07-09
 
 Fork maintenance release: developer experience, Docker support, and runtime hardening on top of upstream `1.3.0`.

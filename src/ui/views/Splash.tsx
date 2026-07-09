@@ -2,10 +2,10 @@ import { Box, Text, useStdin } from "ink";
 import { useSafeInput } from "../hooks/useSafeInput";
 import { Logo } from "../components/Logo";
 import { SearchBar } from "../components/SearchBar";
-import { LOGO_WIDTH } from "../logo";
-import { useStore } from "../store";
+import { LOGO_WIDTH } from "../lib/logo";
+import { useStore } from "../state/store";
 import { sourcesByGroup } from "../../sources/registry";
-import { COLOR, ICON } from "../theme";
+import { COLOR, ICON } from "../lib/theme";
 
 const CATEGORIES = sourcesByGroup()
   .map((g) => g.group.toLowerCase())
@@ -36,7 +36,7 @@ export function Splash() {
         <Logo />
       ) : (
         <Text bold color={COLOR.accent}>
-          torlink
+          TorZlink
         </Text>
       )}
       <Box marginTop={2}>

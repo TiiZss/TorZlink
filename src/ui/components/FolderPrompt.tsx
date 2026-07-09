@@ -3,7 +3,7 @@ import { useSafeInput } from "../hooks/useSafeInput";
 import { TextField } from "./TextField";
 import { Panel } from "./Panel";
 import { PromptHints } from "./PromptHints";
-import { COLOR, ICON } from "../theme";
+import { COLOR, ICON } from "../lib/theme";
 
 interface FolderPromptProps {
   width: number;
@@ -48,7 +48,7 @@ export function FolderPrompt({
           <Box flexGrow={1} minWidth={0}>
             <TextField
               defaultValue={value}
-              placeholder="~/Downloads/torlink"
+              placeholder="~/Downloads/torzlink"
               onSubmit={onSubmit}
             />
           </Box>
