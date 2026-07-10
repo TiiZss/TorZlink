@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Text } from "ink";
-import { COLOR, RULE } from "../theme";
+import { COLOR, RULE } from "../lib/theme";
 
 interface PanelProps {
   title: string;

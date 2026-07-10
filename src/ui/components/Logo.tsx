@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
-import { LOGO_LINES, SPROUT_CELLS } from "../logo";
-import { COLOR, lerpHex } from "../theme";
+import { LOGO_LINES, SPROUT_CELLS } from "../lib/logo";
+import { COLOR, lerpHex } from "../lib/theme";
 
 const HIGHLIGHT = "#ffffff";
 const TOP = COLOR.bright;

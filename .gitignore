@@ -3,3 +3,12 @@ dist/
 .DS_Store
 package-lock.json
 downloads/
+.env
+.agents/
+.claude/
+.github/agents/
+.cursor/rules/
+.cursor/debug-*.log
+debug-*.log
+.env.bak
+*.bak

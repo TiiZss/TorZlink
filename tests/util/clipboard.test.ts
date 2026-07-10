@@ -26,7 +26,7 @@ describe("writeClipboard", () => {
         return proc;
       });
 
-      const { writeClipboard } = await import("./clipboard");
+      const { writeClipboard } = await import("../../src/util/clipboard");
 
       await expect(writeClipboard("magnet:?xt=urn:btih:abc")).resolves.toBe(true);
       expect(spawn).toHaveBeenCalledWith("wl-copy", [], { windowsHide: true });

@@ -34,7 +34,7 @@ describe("openFolder", () => {
       existsSync.mockReturnValue(true);
       spawn.mockImplementation((cmd: string) => fakeProc(cmd === "gio" ? 0 : 1));
 
-      const { openFolder } = await import("./openFolder");
+      const { openFolder } = await import("../../src/util/openFolder");
 
       await expect(openFolder("/home/me/Downloads/torlink")).resolves.toBe(true);
       expect(spawn).toHaveBeenCalledWith("xdg-open", ["/home/me/Downloads/torlink"]);
@@ -50,7 +50,7 @@ describe("openFolder", () => {
       existsSync.mockReturnValue(true);
       spawn.mockImplementation(() => fakeProc(1));
 
-      const { openFolder } = await import("./openFolder");
+      const { openFolder } = await import("../../src/util/openFolder");
 
       await expect(openFolder("C:\\Users\\me\\Downloads\\torlink")).resolves.toBe(true);
       expect(spawn).toHaveBeenCalledWith("explorer", ["C:\\Users\\me\\Downloads\\torlink"]);
@@ -64,7 +64,7 @@ describe("openFolder", () => {
     try {
       existsSync.mockReturnValue(false);
 
-      const { openFolder } = await import("./openFolder");
+      const { openFolder } = await import("../../src/util/openFolder");
 
       await expect(openFolder("C:\\gone")).resolves.toBe(false);
       expect(spawn).not.toHaveBeenCalled();

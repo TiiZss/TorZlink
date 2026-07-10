@@ -1,4 +1,4 @@
-import type { DownloadFocus, Region, Section, SeedFocus } from "./store";
+import type { DownloadFocus, Region, Section, SeedFocus } from "../state/store";
 
 export interface Hint {
   keys: string;

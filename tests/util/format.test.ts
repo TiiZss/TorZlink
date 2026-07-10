@@ -9,7 +9,7 @@ import {
   cleanText,
   stripControl,
   truncate,
-} from "./format";
+} from "../../src/util/format";
 
 describe("formatBytes", () => {
   it("formats across units", () => {

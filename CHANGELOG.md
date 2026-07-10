@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Root launcher scripts** — `torzlink.sh`, `torzlink.ps1`, and `torzlink.cmd` with an interactive menu (native vs Docker); optional `--native` / `--docker` flags to skip the menu; prompts to create empty `.env` before Docker when missing; Docker path calls `docker compose` directly (no Node/npm required)
+
 ### Planned
 
 - Manual smoke test: interactive download in Docker TUI on Windows host

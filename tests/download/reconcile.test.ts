@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { reconcileQueue } from "./reconcile";
-import type { QueueItem } from "./types";
+import { reconcileQueue } from "../../src/download/reconcile";
+import type { QueueItem } from "../../src/download/types";
 
 function item(over: Partial<QueueItem>): QueueItem {
   return {

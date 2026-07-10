@@ -1,7 +1,7 @@
 import { Box, Text } from "ink";
 import { TextField } from "./TextField";
 import { Panel } from "./Panel";
-import { COLOR, ICON } from "../theme";
+import { COLOR, ICON } from "../lib/theme";
 
 interface SearchBarProps {
   width: number;

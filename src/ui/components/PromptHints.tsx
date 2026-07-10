@@ -1,5 +1,5 @@
 import { Box, Text } from "ink";
-import { COLOR, ICON } from "../theme";
+import { COLOR, ICON } from "../lib/theme";
 
 // The one-line action row under a modal prompt: the submit verb carries the
 // visual weight, esc stays quiet.

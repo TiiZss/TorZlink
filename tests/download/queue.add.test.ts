@@ -1,12 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
-import { DownloadQueue } from "./queue";
-import type { QueueItem } from "./types";
+import { DownloadQueue } from "../../src/download/queue";
+import type { QueueItem } from "../../src/download/types";
 
 // add() drives the engine, which would spin up webtorrent and touch the
 // network. Stub it (the way clipboard.test.ts stubs node:child_process) so
 // these tests cover the queue's own bookkeeping. Kept out of queue.test.ts,
 // whose tests prove they never reach the engine by construction.
-vi.mock("./engine", () => ({
+vi.mock("../../src/download/engine", () => ({
   TorrentEngine: class {
     add(): void {}
     remove(): void {}

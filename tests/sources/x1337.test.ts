@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseUploadDate } from "./x1337";
+import { parseUploadDate } from "../../src/sources/x1337";
 
 const detail = (span: string) =>
   `<ul class="list"><li><strong>Date uploaded</strong><span>${span}</span> </li></ul>`;

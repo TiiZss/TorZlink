@@ -1,6 +1,6 @@
 // Single source of truth for the animated progress-bar sheen, shared by the
 // live TUI (src/ui/components/ProgressBar.tsx) and the README SVG generator
-// (scripts/ansi-to-svg.ts) so the preview renders 1:1 with the terminal.
+// (tools/ansi-to-svg.ts) so the preview renders 1:1 with the terminal.
 //
 // The highlight is a cosine bell that sweeps across the filled cells. Position
 // advances by a fractional SHEEN_SPEED per tick at a fast SHEEN_TICK_MS, so the

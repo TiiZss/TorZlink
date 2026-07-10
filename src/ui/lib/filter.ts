@@ -1,5 +1,5 @@
-import { getSource } from "../sources/registry";
-import type { TorrentResult } from "../sources/types";
+import { getSource } from "../../sources/registry";
+import type { TorrentResult } from "../../sources/types";
 
 export function filterResults(
   list: TorrentResult[],

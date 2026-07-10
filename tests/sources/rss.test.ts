@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchWordpressRss, unescapeEntities } from "./rss";
-import { fetchResilient } from "../util/net";
+import { fetchWordpressRss, unescapeEntities } from "../../src/sources/rss";
+import { fetchResilient } from "../../src/util/net";
 
-vi.mock("../util/net", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("../util/net")>();
+vi.mock("../../src/util/net", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/util/net")>();
   return { ...actual, fetchResilient: vi.fn() };
 });
 

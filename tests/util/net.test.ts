@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseRetryAfter, backoffDelay, fetchResilient, HttpError } from "./net";
+import { parseRetryAfter, backoffDelay, fetchResilient, HttpError } from "../../src/util/net";
 
 function fakeRes(status: number, headers: Record<string, string> = {}): Response {
   return {

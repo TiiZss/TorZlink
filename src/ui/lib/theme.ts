@@ -1,4 +1,4 @@
-import type { SourceId } from "../sources/types";
+import type { SourceId } from "../../sources/types";
 
 export const COLOR = {
   accent: "#a78bfa",

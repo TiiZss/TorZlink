@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { stickCursor, wrapStep, windowStart, resultsPanelOuter } from "./move";
+import { stickCursor, wrapStep, windowStart, resultsPanelOuter } from "../../src/ui/lib/move";
 
 describe("stickCursor", () => {
   const rows = (...hashes: string[]) => hashes.map((infoHash) => ({ infoHash }));

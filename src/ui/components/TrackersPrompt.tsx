@@ -4,7 +4,7 @@ import { TextField } from "./TextField";
 import { Panel } from "./Panel";
 import { PromptHints } from "./PromptHints";
 import { formatTrackers, parseTrackers } from "../../config/trackers";
-import { COLOR, ICON } from "../theme";
+import { COLOR, ICON } from "../lib/theme";
 
 interface TrackersPromptProps {
   width: number;

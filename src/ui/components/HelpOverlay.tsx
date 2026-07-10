@@ -1,8 +1,8 @@
 import { Box, Text } from "ink";
 import { COL_GAP, FRAME, KEY_W, pickLayout } from "../helpLayout";
-import { HELP_GROUPS } from "../keymap";
-import { useStore } from "../store";
-import { COLOR, ICON, RULE, lerpHex } from "../theme";
+import { HELP_GROUPS } from "../lib/keymap";
+import { useStore } from "../state/store";
+import { COLOR, ICON, RULE, lerpHex } from "../lib/theme";
 
 const CARD_BORDER = lerpHex(COLOR.accent, RULE, 0.55);
 

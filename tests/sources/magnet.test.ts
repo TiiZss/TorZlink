@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseMagnet, parseInput, isInfoHash, normalizeInfoHash, buildMagnet } from "./magnet";
+import { parseMagnet, parseInput, isInfoHash, normalizeInfoHash, buildMagnet } from "../../src/sources/magnet";
 
 describe("parseMagnet", () => {
   it("keeps a full 40-char hex info hash", () => {

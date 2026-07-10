@@ -1,6 +1,6 @@
 import { Box, Text } from "ink";
-import { COLOR } from "../theme";
-import type { Hint } from "../keymap";
+import { COLOR } from "../lib/theme";
+import type { Hint } from "../lib/keymap";
 
 export function Footer({ hints }: { hints: Hint[] }) {
   return (
