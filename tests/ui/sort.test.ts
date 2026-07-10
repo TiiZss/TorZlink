@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { nextSort, sortResults, sortArrow, SORT_CYCLE } from "./sort";
-import type { Sort } from "./sort";
-import type { SourceId, TorrentResult } from "../sources/types";
+import { nextSort, sortResults, sortArrow, SORT_CYCLE } from "../../src/ui/lib/sort";
+import type { Sort } from "../../src/ui/lib/sort";
+import type { SourceId, TorrentResult } from "../../src/sources/types";
 
 function r(p: Partial<TorrentResult> & { infoHash: string }): TorrentResult {
   return {

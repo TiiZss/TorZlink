@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCliArgs } from "./args";
+import { parseCliArgs } from "../../src/cli/args";
 
 describe("parseCliArgs", () => {
   it("defaults to run with no args", () => {

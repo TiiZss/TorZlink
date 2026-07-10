@@ -1,8 +1,8 @@
 import { Box, Text } from "ink";
 import { useSafeInput } from "../hooks/useSafeInput";
-import { useStore, useQueueItems, CATEGORIES, type Section } from "../store";
-import { wrapStep } from "../move";
-import { ACCENT_RAMP, COLOR, GUTTER, ICON, RULE } from "../theme";
+import { useStore, useQueueItems, CATEGORIES, type Section } from "../state/store";
+import { wrapStep } from "../lib/move";
+import { ACCENT_RAMP, COLOR, GUTTER, ICON, RULE } from "../lib/theme";
 
 interface NavItem {
   key: Section;

@@ -70,6 +70,31 @@ Fork of [baairon/torlink](https://github.com/baairon/torlink). Core behaviour (s
 
 Full version history: [CHANGELOG.md](CHANGELOG.md).
 
+## Quick launch
+
+After cloning, run the root launcher — it shows a menu to pick **native** (Node.js) or **Docker**:
+
+| OS | Command |
+|----|---------|
+| Windows (double-click or cmd) | `torzlink.cmd` |
+| Windows (PowerShell) | `.\torzlink.ps1` |
+| macOS / Linux | `./torzlink.sh` |
+
+```
+TorZlink — launcher
+  1) Native (Node.js, local development)
+  2) Docker (interactive container)
+  q) Exit
+
+Choose [1/2/q]:
+```
+
+Skip the menu in scripts or CI: `./torzlink.sh --native`, `.\torzlink.ps1 -Docker`, etc.
+
+If `.env` is missing when you pick Docker, the launcher offers to create an empty file (Telegram is optional; see `.env.example`).
+
+On Unix, make the shell script executable once: `chmod +x torzlink.sh`.
+
 ## Contributing
 
 To run or work on TorZlink locally:
@@ -85,7 +110,8 @@ To run or work on TorZlink locally:
 3. Launch with auto-setup (installs and updates dependencies on every start):
 
    ```sh
-   npm run launch
+   ./torzlink.sh          # menu: native or Docker
+   npm run launch         # native only
    ```
 
    Or the classic flow:

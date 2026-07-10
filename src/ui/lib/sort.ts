@@ -1,4 +1,4 @@
-import type { TorrentResult } from "../sources/types";
+import type { TorrentResult } from "../../sources/types";
 
 export type SortField = "size" | "seeders" | "source" | "added";
 export type SortDir = "asc" | "desc";

@@ -29,6 +29,7 @@ Local AI agent rules (`.agents/`, `.cursor/rules/`, etc.) are **not** versioned 
 ## Before you open a PR
 
 ```sh
+./torzlink.sh           # menu: native or Docker (torzlink.cmd on Windows)
 npm run launch          # or npm run dev after first install
 npm test
 npm run build

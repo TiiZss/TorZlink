@@ -2,9 +2,9 @@ import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, it, expect } from "vitest";
-import { DownloadQueue, strayDownload } from "./queue";
-import type { HistoryItem } from "./history";
-import { deleteTorrentMeta, saveTorrentMeta } from "./persist";
+import { DownloadQueue, strayDownload } from "../../src/download/queue";
+import type { HistoryItem } from "../../src/download/history";
+import { deleteTorrentMeta, saveTorrentMeta } from "../../src/download/persist";
 
 function h(over: Partial<HistoryItem> = {}): HistoryItem {
   return {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { filterResults } from "./filter";
-import type { SourceId, TorrentResult } from "../sources/types";
+import { filterResults } from "../../src/ui/lib/filter";
+import type { SourceId, TorrentResult } from "../../src/sources/types";
 
 function r(p: Partial<TorrentResult> & { infoHash: string }): TorrentResult {
   return {

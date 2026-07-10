@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import { useSafeInput } from "../hooks/useSafeInput";
-import { useStore, useQueueItems, useQueueHistory, type DownloadFocus } from "../store";
+import { useStore, useQueueItems, useQueueHistory, type DownloadFocus } from "../state/store";
 import { Panel } from "./Panel";
 import { ProgressBar } from "./ProgressBar";
-import { wrapStep, windowStart } from "../move";
-import { COLOR, GUTTER, ICON, sourceStyle } from "../theme";
+import { wrapStep, windowStart } from "../lib/move";
+import { COLOR, GUTTER, ICON, sourceStyle } from "../lib/theme";
 import {
   cleanText,
   formatBytes,

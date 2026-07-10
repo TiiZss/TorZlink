@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatTrackers, parseTrackers } from "./trackers";
+import { formatTrackers, parseTrackers } from "../../src/config/trackers";
 
 describe("parseTrackers", () => {
   it("returns empty for blank input", () => {

@@ -7,7 +7,7 @@ import {
   exportTorrentMeta,
   saveTorrentMeta,
   torrentExportName,
-} from "./persist";
+} from "../../src/download/persist";
 
 describe("torrent metadata export", () => {
   it("builds a safe .torrent filename from a torrent name", () => {

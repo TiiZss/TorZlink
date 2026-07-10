@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { Box, Text } from "ink";
 import { useSafeInput } from "../hooks/useSafeInput";
-import { useStore, useQueueHistory, useSeeds, type SeedFocus } from "../store";
+import { useStore, useQueueHistory, useSeeds, type SeedFocus } from "../state/store";
 import { Panel } from "./Panel";
-import { wrapStep, windowStart } from "../move";
-import { COLOR, GUTTER, ICON, sourceStyle } from "../theme";
+import { wrapStep, windowStart } from "../lib/move";
+import { COLOR, GUTTER, ICON, sourceStyle } from "../lib/theme";
 import { cleanText, formatBytes, formatBytesPerSec, truncate } from "../../util/format";
 import type { SeedItem } from "../../download/types";
 

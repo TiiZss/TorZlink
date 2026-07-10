@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Text } from "ink";
-import { COLOR, RULE, lerpHex } from "../theme";
-import { SHEEN_PEAK, SHEEN_TICK_MS, sheenCenter, sheenIntensity, sheenPeriod } from "../sheen";
+import { COLOR, RULE, lerpHex } from "../lib/theme";
+import { SHEEN_PEAK, SHEEN_TICK_MS, sheenCenter, sheenIntensity, sheenPeriod } from "../lib/sheen";
 
 const DEEP = "#7c5cd6";
 
