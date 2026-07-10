@@ -40,10 +40,10 @@ export function webTorrentClientOpts(): {
   natUpnp?: boolean;
   utp?: boolean;
 } {
-  if (process.platform === "darwin") return { natPmp: false };
   if (envFlag("TORZLINK_DISABLE_NAT", "TORLINK_DISABLE_NAT") || existsSync("/.dockerenv")) {
     return { natPmp: false, natUpnp: false, utp: false };
   }
+  if (process.platform === "darwin") return { natPmp: false };
   return {};
 }
 
