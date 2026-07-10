@@ -6,9 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.5.0] — 2026-07-10
+
+Telegram notification polish and security roadmap documentation.
+
+**Verified:** full test suite; `npm run typecheck`; `npm run build`.
+
 ### Changed
 
-- **Telegram notifications** — copy and download start send the magnet as a `.magnet` document attachment (caption only shows title and folder). Completion posts a summary (size, duration, average speed) without the magnet URI. Errors omit the magnet text.
+- **Telegram notifications** — copy and download start send the magnet as a `.magnet` document attachment (caption shows title and folder only). Completion posts a summary (size, file count, elapsed time, average speed) without the magnet URI. Errors omit the magnet text.
+- **README project board** — security hardening backlog (P0/P1/P2) and fork roadmap columns
+
+### Added
+
+- **`magnetAttachmentFilename()`** — shared basename helper for Telegram attachments and magnet sidecar files
+
+### Security
+
+- `.env.example` — Telegram variables commented by default (enable only with real credentials)
+
+## [1.4.0] — 2026-07-10
 
 Major fork release: rebrand to **TorZlink** / `torzlink`, repo restructure, optional Telegram notifications, root launchers, electric blue theme, and Docker polish.
 

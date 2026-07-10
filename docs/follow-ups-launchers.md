@@ -61,7 +61,8 @@ When editing one launcher file, check the other and update this table if behavio
 
 ### Security (low priority unless copying `.env.example`)
 
-- [ ] If offering “copy from `.env.example`”, warn about placeholder tokens — never enable Telegram with example values
+- [x] `.env.example` — Telegram vars commented by default; README warns not to use placeholders
+- [ ] Launcher warns explicitly when copying `.env.example` placeholder tokens
 
 ## Already done (session reference)
 

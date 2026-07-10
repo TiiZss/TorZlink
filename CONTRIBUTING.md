@@ -12,7 +12,7 @@ TorZlink stays small on purpose. The best way in is to read the code you're abou
 src/app/          entry point (Ink TUI)
 src/config/       paths, config, .env loading
 src/download/     queue, engine, persistence
-src/integrations/ Telegram + notify hub
+src/integrations/ Telegram notifications (sendDocument + sendMessage)
 src/sources/      search adapters
 src/ui/           components, state, views
 assets/preview/   README screenshots (SVG)

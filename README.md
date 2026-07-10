@@ -62,7 +62,7 @@ Fork of [baairon/torlink](https://github.com/baairon/torlink). Core behaviour (s
 | **State / config dir** | `env-paths` default | `TORZLINK_STATE_DIR` override; migrates from upstream `torlink` data |
 | **Clipboard (copy magnet)** | OS clipboard (`xclip`, etc.) | Same + **named `.magnet` files** in downloads when headless/Docker |
 | **WebTorrent in Docker** | N/A | NAT-PMP, UPnP, uTP disabled (`TORZLINK_DISABLE_NAT` / `/.dockerenv`) |
-| **Telegram** | N/A | Optional notifications via `.env` (copy, start, complete, error) |
+| **Telegram** | N/A | Optional notifications via `.env`: `.magnet` attachment on copy/start; completion summary without magnet URI |
 | **Self-update** | npm package update on `torlnk` binary | `torzlink` binary; `TORZLINK_SKIP_UPDATE=1` in Docker/CI |
 | **Repository** | `baairon/torlink` | `TiiZss/TorZlink` |
 
@@ -134,13 +134,15 @@ Save `.env` and source files as **UTF-8** (no BOM on Windows).
 
 ### Telegram (optional)
 
-Copy `.env.example` to `.env` and set:
+Copy `.env.example` to `.env` and uncomment/set:
 
 ```env
 TELEGRAM_ENABLED=1
 TELEGRAM_BOT_TOKEN=your-bot-token
 TELEGRAM_CHANNEL_ID=@your_channel
 ```
+
+Do not enable Telegram with the placeholder values from `.env.example` — set your own bot token and channel.
 
 The bot must be an **admin** of the channel to post. TorZlink notifies on magnet copy (`y`), download start (`d`), completion, and errors. Telegram failures are logged to stderr only — the TUI keeps running.
 
@@ -306,12 +308,14 @@ kanban
     TorZlink wordmark + electric blue theme
     Docker truecolor bootstrap + quiet rebuild
     Tag v1.4.0 release
+    Tag v1.5.0 release
+    Telegram .magnet attachments + completion summary
+    Security roadmap in README project board
   column Security P0
     CI security gates gitleaks npm audit Trivy
     Version package-lock.json + npm ci in CI/Docker
     Normalize magnets before WebTorrent queue.add
     stripControl on all external-source TUI fields
-    Harden .env.example Telegram off by default
     Launcher warn when copying .env.example placeholders
   column Security P1
     Tracker host allowlist or save warning in UI
@@ -344,14 +348,16 @@ kanban
 | ✅ Done | Docker | Env-based paths and clipboard for headless |
 | ✅ Done | Runtime | WebTorrent NAT/UTP hardening in containers |
 | ✅ Done | CI | Matrix Linux / macOS / Windows + Docker build + launcher smoke |
-| ✅ Done | Release | Workflow (`.github/workflows/release.yml`) + **v1.4.0** |
-| ✅ Done | Docs | Changelog, troubleshooting, upstream diff |
+| ✅ Done | Release | Workflow (`.github/workflows/release.yml`) + **v1.5.0** |
+| ✅ Done | Docs | Changelog, troubleshooting, upstream diff, security roadmap |
 | ✅ Done | UX | Root launchers, TorZlink branding, truecolor in Docker |
+| ✅ Done | Telegram | `.magnet` attachments on copy/start; completion summary without magnet URI |
+| ✅ Done | Security | `.env.example`: Telegram vars commented by default |
 | 🔒 P0 | Security | CI: gitleaks + `npm audit` (HIGH+) + Trivy fs + Docker image |
 | 🔒 P0 | Security | Version `package-lock.json`; `npm ci` in CI and Docker deps stage |
 | 🔒 P0 | Security | Normalize magnets at download boundary (infoHash → `buildMagnet`) |
 | 🔒 P0 | Security | `stripControl()` on names/notices from external sources (C1 vs `cleanText` gap) |
-| 🔒 P0 | Security | `.env.example`: `TELEGRAM_ENABLED` commented; launcher warns on copy |
+| 🔒 P0 | Security | Launcher warns when copying `.env.example` placeholder tokens |
 | 🔒 P1 | Security | Tracker host allowlist or warning when saving unknown custom trackers |
 | 🔒 P1 | Security | ADR-001: trust model (FitGirl-only games, seeding, Telegram privacy) |
 | 🔒 P1 | Security | Security regression tests: poisoned magnets, terminal injection in notices |
@@ -374,11 +380,11 @@ kanban
 After merging to [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) `main`:
 
 ```sh
-git tag v1.4.0
-git push origin v1.4.0
+git tag v1.5.0
+git push origin v1.5.0
 ```
 
-The `release` workflow runs tests, publishes `ghcr.io/tiizss/torzlink:latest` and `ghcr.io/tiizss/torzlink:v1.4.0`, and opens a GitHub Release with notes from [CHANGELOG.md](CHANGELOG.md).
+The `release` workflow runs tests, publishes `ghcr.io/tiizss/torzlink:latest` and `ghcr.io/tiizss/torzlink:v1.5.0`, and opens a GitHub Release with notes from [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgments
 
