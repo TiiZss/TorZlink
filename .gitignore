@@ -6,9 +6,8 @@ downloads/
 .env
 .agents/
 .claude/
+.cursor/
 .github/agents/
-.cursor/rules/
-.cursor/debug-*.log
 debug-*.log
 .env.bak
 *.bak
