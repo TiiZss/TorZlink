@@ -2,9 +2,9 @@
   <img src="assets/preview/splash.svg" alt="TorZlink — curated torrents straight from your terminal" style="max-width: 832px; width: 100%; height: auto;">
 </p>
 
-Finding a torrent these days sucks. One site is a minefield of fake download buttons. Another hides the real link under a popup that spawns two more tabs. And after all that, half the results are dead, zero seeders.
+Finding torrents has become frustrating due to misleading ads, redirects, and broken links. 
 
-TorZlink is a torrent finder that lives in your terminal, with zero setup and nothing to configure. One search checks a short, curated list of reputable sources at once, and whatever you pick downloads straight to your computer. The files are yours, saved to your downloads folder.
+TorZlink solves this problem from the command line. With no initial setup required, it lets you search simultaneously across an indexed catalog of reputable sources. Select your file and download it directly to your local machine—cleanly, quickly, and securely.
 
 > **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink) by [bairon (@baairon)](https://github.com/baairon). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, and fixes for headless/container environments. See [Differences from upstream](#differences-from-upstream), [Acknowledgments](#acknowledgments), and the [Changelog](CHANGELOG.md).
 
@@ -18,11 +18,11 @@ TorZlink is a torrent finder that lives in your terminal, with zero setup and no
    npx torzlink
    ```
 
-That's the only thing you'll type. TorZlink opens straight to a search bar: search for what you want, paste in a magnet link or a bare infohash, or just press Enter on an empty box to browse the curated library. From there it's all keypresses, nothing to memorize, and `?` brings up the full list anytime.
+TorZlink offers a straightforward interface based on a search bar that accepts text, magnet links, or infohashes, allowing you to explore its curated library simply by pressing Enter. Navigation is handled using intuitive keyboard shortcuts, with contextual help available at any time by pressing `?`
 
 ## Finding something
 
-Type what you're looking for and press Enter. Results stream in from every source as they answer, tagged with size and how many people are sharing each one, so you can see what'll come down fast. Arrow to what you want and press `d` to save it, or `shift+d` to pick a different folder for just that download.
+Enter your search term and press Enter. The stream of results displays the size and number of peers (seeders) for each file in real time. Select the item using the arrow keys and press `d` to download it to the default path, or `shift+d` to specify an alternative destination directory.
 
 <p align="center">
   <img src="assets/preview/browse.svg" alt="TorZlink browse view: the sidebar, the search bar, and merged results from every source" style="max-width: 832px; width: 100%; height: auto;">
@@ -30,9 +30,7 @@ Type what you're looking for and press Enter. Results stream in from every sourc
 
 ## Your downloads
 
-Active downloads sit up top with their progress, speed, and time left; when one finishes it drops into Recently downloaded just below, so the list stays tidy. Everything's still there when you come back, and anything interrupted picks up where it left off.
-
-Downloads run in the background while you keep searching, so you can queue up as many as you want. They save to your downloads folder, and the Downloads pane keeps tabs on each one; press `o` anytime to change where that is, or grab one result with `shift+d` to send it somewhere else without touching the default. When something finishes it keeps seeding automatically so the next person can find it too, and the Seeding tab lets you pause or stop that anytime.
+The interface displays active downloads at the top with real-time progress, transfer speed, and ETA metrics. Completed tasks automatically move to the "Recently downloaded" section. TorZlink features persistent session state and automatic resumption for interrupted transfers. Background downloading enables simultaneous searching and multi-file queuing. Files are routed to the default downloads directory; press `o` to reconfigure this global path, or use `shift+d` for individual destination overrides. Post-download seeding is automated to support the peer-to-peer network, with manual pause/stop controls available in the "Seeding" tab.
 
 <p align="center">
   <img src="assets/preview/downloads.svg" alt="TorZlink Downloads pane: live progress on top, recently downloaded below" style="max-width: 832px; width: 100%; height: auto;">
@@ -145,6 +143,10 @@ TELEGRAM_CHANNEL_ID=@your_channel
 ```
 
 The bot must be an **admin** of the channel to post. TorZlink notifies on magnet copy (`y`), download start (`d`), completion, and errors. Telegram failures are logged to stderr only — the TUI keeps running.
+
+- **Copy / download start** — caption with title (and folder when known) plus a `.magnet` file attachment; the magnet URI is not pasted inline in the message.
+- **Download complete** — summary only: title, folder, size, file count, elapsed time, and average speed; no magnet text.
+- **Download error** — title, folder, and error message; no magnet text.
 
 `docker-compose.yml` loads `.env` automatically via `env_file`.
 
@@ -304,29 +306,68 @@ kanban
     TorZlink wordmark + electric blue theme
     Docker truecolor bootstrap + quiet rebuild
     Tag v1.4.0 release
+  column Security P0
+    CI security gates gitleaks npm audit Trivy
+    Version package-lock.json + npm ci in CI/Docker
+    Normalize magnets before WebTorrent queue.add
+    stripControl on all external-source TUI fields
+    Harden .env.example Telegram off by default
+    Launcher warn when copying .env.example placeholders
+  column Security P1
+    Tracker host allowlist or save warning in UI
+    ADR-001 trust model torrents seeding privacy
+    Security regression tests magnets terminal injection
+    SBOM generation on release workflow
   column Planned
     Manual interactive download test in Docker TUI
     Windows-specific Docker volume docs
     Optional headless magnet-add CLI mode
     Sync selective upstream fixes from baairon/torlink
+  column Quality P2
+    Zod schema validation for config.json
+    Scraper anti-corruption rebuild magnet from infoHash
+    Optional TORZLINK_DOWNLOAD_ROOT path jail
+    Structured logging TORZLINK_LOG with redaction
+    Global no-seed-by-default config option
+    Source health cache TTL tuning
+  column Follow-ups
+    Code review launchers torzlink.ps1 sh cmd
+    Launcher PR hygiene separate from .agents
+    Docker Desktop PATH WSL2 docs if needed
+    See docs/follow-ups-launchers.md
 ```
 
-| Status | Item |
-| --- | --- |
-| ✅ Done | Developer auto-setup (`ensure.cjs`, `predev`/`prestart`, `npm run launch`) |
-| ✅ Done | Docker image + compose + `docker:run` with `-it` and quiet rebuild |
-| ✅ Done | Env-based paths and clipboard for headless |
-| ✅ Done | WebTorrent NAT/UTP hardening in containers |
-| ✅ Done | CI on three OS + Docker build + launcher smoke tests |
-| ✅ Done | Release workflow (`.github/workflows/release.yml`) |
-| ✅ Done | Documentation (changelog, troubleshooting, upstream diff) |
-| ✅ Done | Root launchers with native/Docker menu |
-| ✅ Done | TorZlink branding and electric blue theme |
-| ✅ Done | Docker truecolor for correct logo colors |
-| ✅ Done | **v1.4.0** tagged and released |
-| 📋 Planned | Manual TUI download smoke test in Docker |
-| 📋 Planned | Headless or scripted magnet workflow |
-| 📋 Planned | Track upstream `baairon/torlink` for merges |
+| Status | Area | Item |
+| --- | --- | --- |
+| ✅ Done | DevEx | Developer auto-setup (`ensure.cjs`, `predev`/`prestart`, `npm run launch`) |
+| ✅ Done | Docker | Image + compose + `docker:run` with `-it` and quiet rebuild |
+| ✅ Done | Docker | Env-based paths and clipboard for headless |
+| ✅ Done | Runtime | WebTorrent NAT/UTP hardening in containers |
+| ✅ Done | CI | Matrix Linux / macOS / Windows + Docker build + launcher smoke |
+| ✅ Done | Release | Workflow (`.github/workflows/release.yml`) + **v1.4.0** |
+| ✅ Done | Docs | Changelog, troubleshooting, upstream diff |
+| ✅ Done | UX | Root launchers, TorZlink branding, truecolor in Docker |
+| 🔒 P0 | Security | CI: gitleaks + `npm audit` (HIGH+) + Trivy fs + Docker image |
+| 🔒 P0 | Security | Version `package-lock.json`; `npm ci` in CI and Docker deps stage |
+| 🔒 P0 | Security | Normalize magnets at download boundary (infoHash → `buildMagnet`) |
+| 🔒 P0 | Security | `stripControl()` on names/notices from external sources (C1 vs `cleanText` gap) |
+| 🔒 P0 | Security | `.env.example`: `TELEGRAM_ENABLED` commented; launcher warns on copy |
+| 🔒 P1 | Security | Tracker host allowlist or warning when saving unknown custom trackers |
+| 🔒 P1 | Security | ADR-001: trust model (FitGirl-only games, seeding, Telegram privacy) |
+| 🔒 P1 | Security | Security regression tests: poisoned magnets, terminal injection in notices |
+| 🔒 P1 | Security | SBOM in `release.yml` workflow |
+| 📋 Planned | QA | Manual TUI download smoke test in Docker (Windows host) |
+| 📋 Planned | Docs | Windows-specific Docker volume docs |
+| 📋 Planned | Product | Headless / scripted magnet-add CLI mode |
+| 📋 Planned | Maintenance | Sync selective upstream fixes from `baairon/torlink` |
+| 📋 P2 | Quality | Zod schema for `config.json` (`downloadDir`, `trackers[]`) |
+| 📋 P2 | Quality | Scraper anti-corruption layer: rebuild magnet from infoHash, no raw HTML passthrough |
+| 📋 P2 | Quality | Optional `TORZLINK_DOWNLOAD_ROOT` + `realpath` validation |
+| 📋 P2 | Ops | Structured logging `TORZLINK_LOG` with token/magnet redaction |
+| 📋 P2 | UX/Privacy | Global no-seed-by-default config option |
+| 📋 Follow-ups | Launchers | Checklist in [docs/follow-ups-launchers.md](docs/follow-ups-launchers.md) |
+
+**Priorities:** 🔒 P0 = before next release · 🔒 P1 = next hardening sprint · 📋 P2 = quality/maintainability · 📋 Planned = agreed product roadmap.
 
 ### Cut a release
 
