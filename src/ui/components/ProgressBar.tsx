@@ -3,7 +3,7 @@ import { Text } from "ink";
 import { COLOR, RULE, lerpHex } from "../lib/theme";
 import { SHEEN_PEAK, SHEEN_TICK_MS, sheenCenter, sheenIntensity, sheenPeriod } from "../lib/sheen";
 
-const DEEP = "#7c5cd6";
+const DEEP = "#1d8fe8";
 
 interface Run {
   color: string;

@@ -1,4 +1,5 @@
 #Requires -Version 5.1
+# Keep in sync with torzlink.sh — see docs/follow-ups-launchers.md
 param(
     [switch]$Native,
     [switch]$Docker
@@ -125,6 +126,7 @@ function Invoke-Docker {
     }
     Ensure-DockerEnvFile
     $composeFile = Join-Path $PSScriptRoot 'packaging/docker/docker-compose.yml'
+    & docker compose -f $composeFile build --quiet torzlink
     & docker compose -f $composeFile run --rm -it torzlink
 }
 

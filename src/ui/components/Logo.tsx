@@ -4,8 +4,8 @@ import { COLOR, lerpHex } from "../lib/theme";
 
 const HIGHLIGHT = "#ffffff";
 const TOP = COLOR.bright;
-const BASE = "#7c5cd6";
-const SHADE = "#4c3a8a";
+const BASE = "#1d8fe8";
+const SHADE = "#0f4d7a";
 const SPROUT_COLOR = "#5ae87a";
 
 function getSheen(t: number): string {

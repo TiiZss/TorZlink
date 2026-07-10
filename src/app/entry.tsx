@@ -1,3 +1,4 @@
+import "./bootstrap-terminal-env";
 import { render } from "ink";
 import { loadEnv } from "../config/env";
 import { parseCliArgs, HELP_TEXT } from "../cli/args";
@@ -28,6 +29,7 @@ if (!process.stdin.isTTY || !process.stdout.isTTY) {
   process.stderr.write(
     "\nTorZlink needs an interactive terminal (TTY).\n\n" +
       "Docker:\n" +
+      "  docker compose -f packaging/docker/docker-compose.yml build --quiet torzlink\n" +
       "  docker compose -f packaging/docker/docker-compose.yml run --rm -it torzlink\n" +
       "  npm run docker:run\n\n" +
       "Plain docker run:\n" +

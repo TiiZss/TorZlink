@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 'use strict';
 
+// Must run before dynamic import of index.js (Ink/chalk cache color depth once).
+if (!process.env.COLORTERM) process.env.COLORTERM = 'truecolor';
+if (process.env.FORCE_COLOR === undefined) process.env.FORCE_COLOR = '3';
+
 var path = require('node:path');
 var fs = require('node:fs');
 

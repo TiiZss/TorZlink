@@ -19,6 +19,7 @@ assets/preview/   README screenshots (SVG)
 packaging/docker/ Dockerfile + compose
 packaging/nix/    Nix package
 tools/            dev utilities (previews, seeding check)
+docs/             follow-up notes (e.g. launcher backlog)
 tests/            Vitest (mirrors src/)
 ```
 
@@ -41,6 +42,10 @@ In CI or when you want to skip dependency self-update:
 TORZLINK_SKIP_UPDATE=1 npm run dev
 ```
 
+## Launcher scripts (`torzlink.sh`, `torzlink.ps1`, `torzlink.cmd`)
+
+Keep **bash and PowerShell behavior in sync** (menu, errors, Docker, `.env`). Pending improvements and agent skills to use: [docs/follow-ups-launchers.md](docs/follow-ups-launchers.md).
+
 ## Cross-platform
 
 TorZlink runs on Windows, macOS, and Linux, so anything that touches the OS branches all three. Look at `writeClipboard` in `src/util/clipboard.ts` from #6: `clip.exe` / PowerShell on win32, pbcopy on darwin, then wl-copy, xclip, xsel on linux. #5's `scripts/cli-entry.cjs` is the same instinct aimed at the Node runtime. "Works on my machine" is not the bar.
@@ -54,6 +59,6 @@ TorZlink shows one contextual footer plus a `?` cheatsheet, never a wall of comm
 
 ## Visual style
 
-TorZlink is pastel-violet and quiet. There is exactly one gradient, the wordmark sheen. Everything else is solid color. Please don't add a second gradient.
+TorZlink is electric blue and quiet. There is exactly one gradient, the wordmark sheen. Everything else is solid color. Please don't add a second gradient.
 
 Thanks for helping keep TorZlink sharp.

@@ -6,6 +6,8 @@ const {
   semverLt,
   parseVersion,
   countOutdated,
+  countAuditVulnerabilities,
+  hasSafeAuditFixes,
   isDevProject,
   ROOT,
 } = require('./ensure.cjs');
@@ -27,6 +29,29 @@ describe('ensure', () => {
     assert.equal(countOutdated(''), 0);
     assert.equal(countOutdated('{"ink":{}}'), 1);
     assert.equal(countOutdated('{}'), 0);
+  });
+
+  it('countAuditVulnerabilities parses npm audit json', () => {
+    assert.equal(countAuditVulnerabilities(''), 0);
+    assert.equal(
+      countAuditVulnerabilities('{"metadata":{"vulnerabilities":{"total":3}}}'),
+      3,
+    );
+  });
+
+  it('hasSafeAuditFixes detects semver-safe fixes', () => {
+    const safe = JSON.stringify({
+      vulnerabilities: {
+        esbuild: { fixAvailable: { isSemVerMajor: false } },
+      },
+    });
+    const unsafe = JSON.stringify({
+      vulnerabilities: {
+        ip: { fixAvailable: { isSemVerMajor: true } },
+      },
+    });
+    assert.equal(hasSafeAuditFixes(safe), true);
+    assert.equal(hasSafeAuditFixes(unsafe), false);
   });
 
   it('isDevProject detects source tree', () => {
