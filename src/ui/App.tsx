@@ -150,13 +150,22 @@ export function App({
     if (!queue) return;
     const onCompleted = (it: QueueItem): void => {
       setNotice(`${ICON.done} ${truncate(cleanText(it.name), 40)}`);
-      notifyDownloadCompleted({ name: it.name, magnet: it.magnet, infoHash: it.id });
+      const durationSec = Math.max(1, (Date.now() - it.addedAt) / 1000);
+      notifyDownloadCompleted({
+        name: it.name,
+        infoHash: it.id,
+        dir: it.dir,
+        totalBytes: it.totalBytes,
+        files: it.files,
+        durationSec,
+        avgSpeedBytesPerSec: it.totalBytes / durationSec,
+      });
     };
     const onFailed = (it: QueueItem): void => {
       notifyDownloadFailed({
         name: it.name,
-        magnet: it.magnet,
         infoHash: it.id,
+        dir: it.dir,
         error: it.error,
       });
     };

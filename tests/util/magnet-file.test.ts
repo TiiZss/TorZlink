@@ -20,6 +20,12 @@ describe("magnetFilePath", () => {
     expect(p).toBe(path.join(tmpDir, "Bad Name Torrent.magnet"));
   });
 
+  it("magnetAttachmentFilename returns basename with hash suffix when provided", async () => {
+    const { magnetAttachmentFilename } = await import("../../src/util/magnet-file");
+    expect(magnetAttachmentFilename("My Game", "a1b2c3d4")).toBe("My Game [a1b2c3d4].magnet");
+    expect(magnetAttachmentFilename("Plain")).toBe("Plain.magnet");
+  });
+
   it("adds infoHash suffix on collision", async () => {
     const name = "Duplicate Title";
     const first = magnetFilePath(tmpDir, name);
