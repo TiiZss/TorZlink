@@ -1,4 +1,4 @@
-import { HELP_GROUPS } from "./keymap";
+import { HELP_GROUPS } from "./lib/keymap";
 
 export const KEY_GAP = 2;
 export const COL_GAP = 2;
