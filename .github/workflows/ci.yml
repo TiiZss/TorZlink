@@ -38,3 +38,15 @@ jobs:
           tags: torzlink:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  launchers:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke test launchers
+        shell: bash
+        run: bash tools/test-launchers.sh

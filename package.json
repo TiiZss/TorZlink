@@ -25,6 +25,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && node --test scripts/ensure.test.cjs",
+    "test:launchers": "bash tools/test-launchers.sh",
     "verify:seeding": "tsx tools/verify-seeding.ts",
     "previews": "tsx tools/render-previews.tsx",
     "prepublishOnly": "npm run build",

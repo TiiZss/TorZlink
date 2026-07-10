@@ -4,15 +4,15 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json ./
-RUN npm install --omit=dev \
+RUN npm install --omit=dev --loglevel=error \
   && test -f node_modules/node-datachannel/build/Release/node_datachannel.node \
-  && npm cache clean --force
+  && npm cache clean --force 2>/dev/null || npm cache clean
 
 # ── build: compile bundle + copy ensure into dist ───────────────────────────
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json ./
-RUN npm install --ignore-scripts
+RUN npm install --ignore-scripts --loglevel=error
 COPY tsconfig.json tsup.config.ts ./
 COPY src ./src
 COPY scripts ./scripts
@@ -28,6 +28,9 @@ RUN apk add --no-cache tini xclip \
 WORKDIR /app
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
+    COLORTERM=truecolor \
+    FORCE_COLOR=3 \
+    TERM=xterm-256color \
     NODE_ENV=production \
     TORZLINK_SKIP_UPDATE=1 \
     TORZLINK_STATE_DIR=/data \

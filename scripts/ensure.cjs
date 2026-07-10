@@ -55,7 +55,7 @@ function runNpm(args, opts = {}) {
     stdio: opts.stdio || 'pipe',
     encoding: 'utf8',
     env: process.env,
-    shell: process.platform === 'win32',
+    shell: false,
   });
 }
 
@@ -99,6 +99,30 @@ function countOutdated(stdout) {
   }
 }
 
+function countAuditVulnerabilities(stdout) {
+  if (!stdout) return 0;
+  try {
+    const report = JSON.parse(stdout);
+    return report.metadata?.vulnerabilities?.total ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+function hasSafeAuditFixes(stdout) {
+  if (!stdout) return false;
+  try {
+    const report = JSON.parse(stdout);
+    for (const vuln of Object.values(report.vulnerabilities || {})) {
+      const fix = vuln.fixAvailable;
+      if (fix && !fix.isSemVerMajor) return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 function isDevProject(root) {
   return existsSync(resolve(root, 'src')) && existsSync(resolve(root, 'package.json'));
 }
@@ -114,18 +138,49 @@ function ensureNodeModules(root, quiet) {
   }
 }
 
+function runNpmUpdate(root, quiet, includeDev) {
+  const args = includeDev ? ['update'] : ['update', '--omit=dev'];
+  const update = runNpm(args, { cwd: root, stdio: 'inherit' });
+  if (update.status !== 0) {
+    log('torzlink: npm update had issues; continuing anyway.', quiet);
+  }
+}
+
+function fixAuditVulnerabilities(root, quiet) {
+  const audit = runNpm(['audit', '--json'], { cwd: root });
+  const total = countAuditVulnerabilities(audit.stdout);
+  if (total === 0) return false;
+
+  if (!hasSafeAuditFixes(audit.stdout)) {
+    log(`torzlink: ${total} vulnerability/vulnerabilities (no semver-safe auto-fix).`, quiet);
+    return false;
+  }
+
+  log('torzlink: fixing vulnerabilities…', quiet);
+  const fix = runNpm(['audit', 'fix'], { cwd: root, stdio: 'inherit' });
+  if (fix.status !== 0) {
+    log('torzlink: npm audit fix had issues; continuing anyway.', quiet);
+  }
+  return true;
+}
+
 function updateDependencies(root, quiet, includeDev) {
   ensureNodeModules(root, quiet);
 
   const outdated = runNpm(['outdated', '--json'], { cwd: root });
   const count = countOutdated(outdated.stdout);
-  if (count === 0) return;
+  if (count > 0) {
+    log(`torzlink: updating ${count} package(s)…`, quiet);
+    runNpmUpdate(root, quiet, includeDev);
+  }
 
-  log(`torzlink: updating ${count} package(s)…`, quiet);
-  const args = includeDev ? ['update'] : ['update', '--omit=dev'];
-  const update = runNpm(args, { cwd: root, stdio: 'inherit' });
-  if (update.status !== 0) {
-    log('torzlink: npm update had issues; continuing anyway.', quiet);
+  if (fixAuditVulnerabilities(root, quiet)) {
+    const outdatedAfter = runNpm(['outdated', '--json'], { cwd: root });
+    const countAfter = countOutdated(outdatedAfter.stdout);
+    if (countAfter > 0) {
+      log(`torzlink: updating ${countAfter} package(s) after audit fix…`, quiet);
+      runNpmUpdate(root, quiet, includeDev);
+    }
   }
 }
 
@@ -187,6 +242,8 @@ module.exports = {
   parseVersion,
   parseArgs,
   countOutdated,
+  countAuditVulnerabilities,
+  hasSafeAuditFixes,
   isDevProject,
   run,
   ROOT,

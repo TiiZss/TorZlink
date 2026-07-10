@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Keep in sync with torzlink.ps1 — see docs/follow-ups-launchers.md
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -92,6 +93,7 @@ run_docker() {
     exit 1
   fi
   ensure_docker_env_file
+  docker compose -f packaging/docker/docker-compose.yml build --quiet torzlink
   docker compose -f packaging/docker/docker-compose.yml run --rm -it torzlink
 }
 
