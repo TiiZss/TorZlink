@@ -323,6 +323,7 @@ kanban
     Security regression tests magnets terminal injection
     SBOM generation on release workflow
     Release fix dockerignore package-lock + SBOM stdout redirect
+    Agent workflow docs pre-release gate skill routing
   column Next session
     Manual interactive download test in Docker TUI
     Windows-specific Docker volume docs
@@ -368,6 +369,7 @@ kanban
 | ✅ Done | Security | Regression tests for poisoned magnets and TUI injection |
 | ✅ Done | Security | CycloneDX SBOM attached to GitHub Releases |
 | ✅ Done | Release | v1.6.0 published — [GitHub Release](https://github.com/TiiZss/TorZlink/releases/tag/v1.6.0) + GHCR `:v1.6.0` / `:latest` |
+| ✅ Done | Docs | Agent workflow — [docs/agent-workflow.md](docs/agent-workflow.md) + `npm run pre-release` |
 | 🔜 Next | QA | Manual TUI download smoke test in Docker (Windows host) — [docs/next-session.md](docs/next-session.md) |
 | 🔜 Next | Docs | Windows-specific Docker volume docs |
 | 🔜 Next | Quality P2 | Zod schema for `config.json` (`downloadDir`, `trackers[]`) |
@@ -390,9 +392,12 @@ kanban
 After merging to [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) `main`, bump `package.json`, `src/constants/version.ts`, and [CHANGELOG.md](CHANGELOG.md), then:
 
 ```sh
+npm run pre-release    # tests, SBOM, Docker smoke — see docs/agent-workflow.md
 git tag v1.7.0
 git push origin v1.7.0
 ```
+
+Agents: run `review-security` and `review-bugbot` before tagging; monitor the Release workflow after push ([docs/agent-workflow.md](docs/agent-workflow.md)).
 
 The `release` workflow runs tests, publishes `ghcr.io/tiizss/torzlink:latest` and `ghcr.io/tiizss/torzlink:v1.7.0`, attaches `sbom.cdx.json`, and opens a GitHub Release with notes from [CHANGELOG.md](CHANGELOG.md).
 

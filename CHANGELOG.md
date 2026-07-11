@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Agent workflow** — [docs/agent-workflow.md](docs/agent-workflow.md): proactive skill routing, security/bugbot gates before tags, `npm run pre-release`, CI monitoring guidance
+- **`tools/pre-release-check.sh`** — lockfile/Docker/SBOM invariants + test/build/docker smoke
+- **Cursor rule templates** — [docs/cursor-rules/](docs/cursor-rules/); install with `npm run cursor:rules`
+
 ## [1.6.0] — 2026-07-11
 
 Security hardening release: P0 supply-chain and download-boundary controls plus P1 tracker warnings, trust model ADR, regression tests, and release SBOM.
