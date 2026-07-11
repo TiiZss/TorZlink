@@ -31,6 +31,8 @@ Security hardening **P0 + P1** is complete. Pick from this list when resuming wo
 
 ## Skills to invoke
 
+See [docs/agent-workflow.md](agent-workflow.md) for the full routing table, review gates, and release checklist.
+
 | Task | Skill |
 | --- | --- |
 | P2 config / scrapers | `engineering-software-architect`, `security-appsec-engineer` |

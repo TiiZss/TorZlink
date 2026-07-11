@@ -1,0 +1,18 @@
+---
+description: CI/Docker/release edits — lockfile context, SBOM, local build smoke
+globs: packaging/docker/**,.github/workflows/**,.dockerignore,Dockerfile
+alwaysApply: false
+---
+
+# Release pipeline edits
+
+Read `engineering-devops-automator` skill before changing these files.
+
+## Checklist
+
+1. If `Dockerfile` copies `package-lock.json` for `npm ci`, confirm `.dockerignore` does **not** exclude it
+2. `release.yml` SBOM step uses stdout redirect: `npm sbom ... > sbom.cdx.json`
+3. Run `docker build -f packaging/docker/Dockerfile .` before any release tag
+4. Run `review-bugbot` on the diff
+
+See [docs/agent-workflow.md](../agent-workflow.md).

@@ -1,0 +1,43 @@
+---
+description: Session orchestration — proactive skills, review gates, pre-release checks, CI loop
+alwaysApply: true
+---
+
+# TorZlink session orchestration
+
+Full playbook: [docs/agent-workflow.md](docs/agent-workflow.md). Follow it unless the user explicitly opts out.
+
+## Proactive skills
+
+Match user intent → read skill first (`.agents/skills/*/SKILL.md` or `.cursor/rules/*.mdc`):
+
+- Security / `.env` / hardening → `security-senior-secops`, `security-appsec-engineer`
+- Docker / CI / release.yml → `engineering-devops-automator`
+- Smoke / reliability / tag → `engineering-sre`
+- Telegram / HTTP APIs → `testing-api-tester`
+- TUI → `engineering-frontend-developer`; backend → `engineering-backend-architect`
+- Tags / git → `engineering-git-workflow-master`; big diffs → `split-to-prs`; open PR → `babysit`
+
+Announce which skill you are applying (one line), then execute its checklist.
+
+## Mandatory reviews before tag
+
+1. `review-security` skill → `security-review` subagent (`Diff: branch changes`)
+2. `review-bugbot` skill → `bugbot` subagent
+3. `npm run pre-release` (or `tools/pre-release-check.sh` after test/build)
+
+Fix Critical/High findings before tagging.
+
+## Release invariants
+
+- `Dockerfile` + `npm ci` → `package-lock.json` must NOT be in `.dockerignore`
+- SBOM: `npm sbom ... > sbom.cdx.json` (no `-o` flag)
+- After tag push: `gh run watch` on `release.yml`; on failure use `ci-investigator`
+
+## Loop
+
+After pushing a version tag, prefer `/loop 30s` (loop skill) or `gh run watch` until Release workflow completes.
+
+## Trigger phrases
+
+Auto-apply §1–§3 when user says: release, tag, v1., GitHub, cerrar sesión, seguridad, Docker, CI, Telegram, review, PR, smoke.
