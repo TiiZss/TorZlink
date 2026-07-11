@@ -13,11 +13,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Magnet sanitization** — `sanitizeDownloadInput()` / `sanitizeMagnetInput()` rebuild magnets from validated infoHashes before WebTorrent
 - **`safeDisplayText()`** — strips terminal control characters from scraped names shown in the TUI
 - **Launcher `.env` warnings** — detect placeholder Telegram tokens/channels in `.env` before native or Docker launch
+- **Custom tracker warnings** — unknown tracker hostnames flagged when saving extra announce URLs
+- **ADR-001** — trust model document at [docs/adr/001-trust-model.md](docs/adr/001-trust-model.md)
+- **Security regression tests** — poisoned magnets and terminal-injection labels in `tests/security/regression.test.ts`
+- **Release SBOM** — CycloneDX SBOM generated on tag releases and attached to GitHub Release
 
 ### Security
 
 - Download boundary no longer passes raw scraped magnet URIs to WebTorrent when a canonical rebuild is possible
 - TUI notices and lists use `safeDisplayText()` for external-source titles
+- Saving custom trackers warns when announce URLs point to hosts outside the known-public list
 
 ## [1.5.0] — 2026-07-10
 

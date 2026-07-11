@@ -23,7 +23,7 @@ export function TrackersPrompt({ width, value, onSubmit, onCancel }: TrackersPro
       <Panel title="extra trackers" width={width} focused height={3}>
         <Box>
           <Text dimColor wrap="truncate-end">
-            Comma or space separated. Empty clears. Applies to new adds.
+            Comma or space separated. Empty clears. Applies to new adds. Unknown hosts are warned on save.
           </Text>
         </Box>
         <Box>

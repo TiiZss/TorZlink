@@ -23,6 +23,12 @@ jobs:
         env:
           TORZLINK_SKIP_UPDATE: "1"
       - run: npm run build
+      - name: Generate SBOM
+        run: npm sbom --omit=dev --sbom-format=cyclonedx --sbom-type=library -o sbom.cdx.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cdx.json
 
   docker:
     runs-on: ubuntu-latest
@@ -54,6 +60,9 @@ jobs:
     needs: [test, docker]
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sbom
       - name: Extract changelog for tag
         id: notes
         shell: bash
@@ -79,3 +88,4 @@ jobs:
         with:
           body_path: release-notes.md
           generate_release_notes: true
+          files: sbom.cdx.json

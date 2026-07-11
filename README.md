@@ -316,8 +316,7 @@ kanban
     Normalize magnets before WebTorrent queue.add
     stripControl on all external-source TUI fields
     Launcher warn when copying .env.example placeholders
-  column Security P1
-    Tracker host allowlist or save warning in UI
+    Tracker host warning on save
     ADR-001 trust model torrents seeding privacy
     Security regression tests magnets terminal injection
     SBOM generation on release workflow
@@ -357,10 +356,10 @@ kanban
 | ✅ Done | Security | Magnet normalization at download boundary |
 | ✅ Done | Security | `safeDisplayText()` for external-source TUI labels |
 | ✅ Done | Security | Launchers warn on `.env` placeholder Telegram values |
-| 🔒 P1 | Security | Tracker host allowlist or warning when saving unknown custom trackers |
-| 🔒 P1 | Security | ADR-001: trust model (FitGirl-only games, seeding, Telegram privacy) |
-| 🔒 P1 | Security | Security regression tests: poisoned magnets, terminal injection in notices |
-| 🔒 P1 | Security | SBOM in `release.yml` workflow |
+| ✅ Done | Security | Custom tracker save warns on unknown announce hosts |
+| ✅ Done | Security | ADR-001 trust model ([docs/adr/001-trust-model.md](docs/adr/001-trust-model.md)) |
+| ✅ Done | Security | Regression tests for poisoned magnets and TUI injection |
+| ✅ Done | Security | CycloneDX SBOM attached to GitHub Releases |
 | 📋 Planned | QA | Manual TUI download smoke test in Docker (Windows host) |
 | 📋 Planned | Docs | Windows-specific Docker volume docs |
 | 📋 Planned | Product | Headless / scripted magnet-add CLI mode |

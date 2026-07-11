@@ -4,6 +4,7 @@ import { useSafeInput } from "./hooks/useSafeInput";
 import { promises as fs } from "node:fs";
 import { loadConfig, saveConfig, type Config } from "../config/config";
 import { normalizeDownloadDir } from "../config/folder";
+import { unknownTrackerHosts } from "../config/trackers";
 import { DownloadQueue } from "../download/queue";
 import { loadQueue, loadSeeds } from "../download/persist";
 import { loadHistory } from "../download/history";
@@ -223,7 +224,16 @@ export function App({
         return;
       }
       setConfig({ ...config, trackers: list });
-      setNotice(list.length === 0 ? "Cleared extra trackers." : `Saved ${list.length} tracker${list.length === 1 ? "" : "s"}.`);
+      const unknown = unknownTrackerHosts(list);
+      let msg =
+        list.length === 0
+          ? "Cleared extra trackers."
+          : `Saved ${list.length} tracker${list.length === 1 ? "" : "s"}.`;
+      if (unknown.length > 0) {
+        const hosts = unknown.map((h) => truncate(h, 24)).join(", ");
+        msg += ` Warning: unknown host${unknown.length === 1 ? "" : "s"} (${hosts}) will receive your infoHashes.`;
+      }
+      setNotice(msg);
     },
     [config, setConfig, closeTrackersPrompt],
   );

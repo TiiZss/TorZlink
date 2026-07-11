@@ -19,7 +19,7 @@ assets/preview/   README screenshots (SVG)
 packaging/docker/ Dockerfile + compose
 packaging/nix/    Nix package
 tools/            dev utilities (previews, seeding check)
-docs/             follow-up notes (e.g. launcher backlog)
+docs/            follow-up notes, ADRs (docs/adr/)
 tests/            Vitest (mirrors src/)
 ```
 
