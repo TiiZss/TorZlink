@@ -31,6 +31,10 @@ Security hardening release: P0 supply-chain and download-boundary controls plus 
 - Saving custom trackers warns when announce URLs point to hosts outside the known-public list
 - `.env.example` keeps Telegram variables commented by default (from v1.5.0 baseline)
 
+### Fixed
+
+- **Release pipeline** — `.dockerignore` no longer excludes `package-lock.json` (required by `npm ci` in the Dockerfile); SBOM step redirects `npm sbom` stdout to `sbom.cdx.json` (CLI has no `-o` flag)
+
 ## [1.5.0] — 2026-07-10
 
 Telegram notification polish and security roadmap documentation.

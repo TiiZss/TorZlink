@@ -6,7 +6,7 @@ Finding torrents has become frustrating due to misleading ads, redirects, and br
 
 TorZlink solves this problem from the command line. With no initial setup required, it lets you search simultaneously across an indexed catalog of reputable sources. Select your file and download it directly to your local machine—cleanly, quickly, and securely.
 
-> **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink) by [bairon (@baairon)](https://github.com/baairon). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, and fixes for headless/container environments. See [Differences from upstream](#differences-from-upstream), [Acknowledgments](#acknowledgments), and the [Changelog](CHANGELOG.md).
+> **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink) by [bairon (@baairon)](https://github.com/baairon). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, security hardening, and fixes for headless/container environments. **Latest release:** [v1.6.0](https://github.com/TiiZss/TorZlink/releases/tag/v1.6.0). See [Differences from upstream](#differences-from-upstream), [Acknowledgments](#acknowledgments), and the [Changelog](CHANGELOG.md).
 
 ## Get started
 
@@ -65,6 +65,7 @@ Fork of [baairon/torlink](https://github.com/baairon/torlink). Core behaviour (s
 | **Telegram** | N/A | Optional notifications via `.env`: `.magnet` attachment on copy/start; completion summary without magnet URI |
 | **Self-update** | npm package update on `torlnk` binary | `torzlink` binary; `TORZLINK_SKIP_UPDATE=1` in Docker/CI |
 | **Repository** | `baairon/torlink` | `TiiZss/TorZlink` |
+| **Security** | Upstream baseline | P0/P1 hardening (v1.6.0): CI scans, magnet sanitization, ADR-001, SBOM on release |
 
 Full version history: [CHANGELOG.md](CHANGELOG.md).
 
@@ -321,10 +322,15 @@ kanban
     ADR-001 trust model torrents seeding privacy
     Security regression tests magnets terminal injection
     SBOM generation on release workflow
-  column Planned
+    Release fix dockerignore package-lock + SBOM stdout redirect
+  column Next session
     Manual interactive download test in Docker TUI
     Windows-specific Docker volume docs
+    Zod schema validation for config.json
+    Scraper anti-corruption rebuild magnet from infoHash
     Optional headless magnet-add CLI mode
+    See docs/next-session.md
+  column Planned
     Sync selective upstream fixes from baairon/torlink
   column Quality P2
     Zod schema validation for config.json
@@ -361,9 +367,12 @@ kanban
 | ✅ Done | Security | ADR-001 trust model ([docs/adr/001-trust-model.md](docs/adr/001-trust-model.md)) |
 | ✅ Done | Security | Regression tests for poisoned magnets and TUI injection |
 | ✅ Done | Security | CycloneDX SBOM attached to GitHub Releases |
-| 📋 Planned | QA | Manual TUI download smoke test in Docker (Windows host) |
-| 📋 Planned | Docs | Windows-specific Docker volume docs |
-| 📋 Planned | Product | Headless / scripted magnet-add CLI mode |
+| ✅ Done | Release | v1.6.0 published — [GitHub Release](https://github.com/TiiZss/TorZlink/releases/tag/v1.6.0) + GHCR `:v1.6.0` / `:latest` |
+| 🔜 Next | QA | Manual TUI download smoke test in Docker (Windows host) — [docs/next-session.md](docs/next-session.md) |
+| 🔜 Next | Docs | Windows-specific Docker volume docs |
+| 🔜 Next | Quality P2 | Zod schema for `config.json` (`downloadDir`, `trackers[]`) |
+| 🔜 Next | Quality P2 | Scraper anti-corruption layer: rebuild magnet from infoHash |
+| 🔜 Next | Product | Headless / scripted magnet-add CLI mode |
 | 📋 Planned | Maintenance | Sync selective upstream fixes from `baairon/torlink` |
 | 📋 P2 | Quality | Zod schema for `config.json` (`downloadDir`, `trackers[]`) |
 | 📋 P2 | Quality | Scraper anti-corruption layer: rebuild magnet from infoHash, no raw HTML passthrough |
@@ -372,18 +381,20 @@ kanban
 | 📋 P2 | UX/Privacy | Global no-seed-by-default config option |
 | 📋 Follow-ups | Launchers | Checklist in [docs/follow-ups-launchers.md](docs/follow-ups-launchers.md) |
 
-**Priorities:** 📋 Planned = product roadmap · 📋 P2 = quality/maintainability · Security P0/P1 complete as of **v1.6.0**.
+**Priorities:** 🔜 Next = pick up here ([docs/next-session.md](docs/next-session.md)) · 📋 Planned = broader roadmap · 📋 P2 = quality/maintainability · Security P0/P1 complete as of **v1.6.0**.
+
+**Current release:** [v1.6.0](https://github.com/TiiZss/TorZlink/releases/tag/v1.6.0) — security hardening (P0+P1).
 
 ### Cut a release
 
-After merging to [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) `main`:
+After merging to [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) `main`, bump `package.json`, `src/constants/version.ts`, and [CHANGELOG.md](CHANGELOG.md), then:
 
 ```sh
-git tag v1.6.0
-git push origin v1.6.0
+git tag v1.7.0
+git push origin v1.7.0
 ```
 
-The `release` workflow runs tests, publishes `ghcr.io/tiizss/torzlink:latest` and `ghcr.io/tiizss/torzlink:v1.6.0`, attaches `sbom.cdx.json`, and opens a GitHub Release with notes from [CHANGELOG.md](CHANGELOG.md).
+The `release` workflow runs tests, publishes `ghcr.io/tiizss/torzlink:latest` and `ghcr.io/tiizss/torzlink:v1.7.0`, attaches `sbom.cdx.json`, and opens a GitHub Release with notes from [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgments
 

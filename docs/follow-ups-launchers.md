@@ -66,6 +66,15 @@ When editing one launcher file, check the other and update this table if behavio
 
 ## Already done (session reference)
 
+### v1.6.0 — security hardening (2026-07-11)
+
+- P0/P1 security: CI gates, lockfile, magnet sanitization, TUI `safeDisplayText`, launcher `.env` warnings
+- P1: tracker host warnings, ADR-001, regression tests, CycloneDX SBOM on release
+- Release pipeline: `package-lock.json` in Docker context; SBOM stdout redirect
+- Published: [v1.6.0](https://github.com/TiiZss/TorZlink/releases/tag/v1.6.0)
+
+### Launchers (earlier sessions)
+
 - Root launchers with interactive menu
 - `Stop-Launcher` / clean errors in PowerShell (no `throw` stack traces for users)
 - Bash menu loop aligned with PowerShell
