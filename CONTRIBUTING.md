@@ -19,8 +19,8 @@ assets/preview/   README screenshots (SVG)
 packaging/docker/ Dockerfile + compose
 packaging/nix/    Nix package
 tools/            dev utilities (previews, seeding check)
-docs/            follow-up notes, ADRs (docs/adr/)
-tests/            Vitest (mirrors src/)
+docs/            follow-up notes, ADRs (docs/adr/), next-session backlog
+tests/            Vitest (mirrors src/); security regressions in tests/security/
 ```
 
 Save source files and `.env` as **UTF-8** (no BOM on Windows). `.editorconfig` and `.gitattributes` enforce this in the repo.
@@ -45,6 +45,8 @@ TORZLINK_SKIP_UPDATE=1 npm run dev
 ## Launcher scripts (`torzlink.sh`, `torzlink.ps1`, `torzlink.cmd`)
 
 Keep **bash and PowerShell behavior in sync** (menu, errors, Docker, `.env`). Pending improvements and agent skills to use: [docs/follow-ups-launchers.md](docs/follow-ups-launchers.md).
+
+Security and trust boundaries: [docs/adr/001-trust-model.md](docs/adr/001-trust-model.md). Next session priorities: [docs/next-session.md](docs/next-session.md).
 
 ## Cross-platform
 
