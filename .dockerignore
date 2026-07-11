@@ -9,6 +9,5 @@ preview
 *.md
 !README.md
 .DS_Store
-package-lock.json
 .env
 .env.*

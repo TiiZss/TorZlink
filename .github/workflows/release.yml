@@ -24,7 +24,7 @@ jobs:
           TORZLINK_SKIP_UPDATE: "1"
       - run: npm run build
       - name: Generate SBOM
-        run: npm sbom --omit=dev --sbom-format=cyclonedx --sbom-type=library -o sbom.cdx.json
+        run: npm sbom --omit=dev --sbom-format=cyclonedx --sbom-type=library > sbom.cdx.json
       - uses: actions/upload-artifact@v4
         with:
           name: sbom
