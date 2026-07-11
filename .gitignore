@@ -10,3 +10,4 @@ downloads/
 debug-*.log
 .env.bak
 *.bak
+sbom.cdx.json
