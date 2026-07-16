@@ -2,12 +2,15 @@ node_modules/
 dist/
 .DS_Store
 downloads/
+# Local secrets — never commit (keep tracked: .env.example, **/.env*.example)
 .env
+.env.local
+.env.*.local
+.env.bak
 .agents/
 .claude/
 .cursor/
 .github/agents/
 debug-*.log
-.env.bak
 *.bak
 sbom.cdx.json
