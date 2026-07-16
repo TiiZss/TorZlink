@@ -33,7 +33,8 @@
     "prepublishOnly": "npm run build",
     "docker:build": "docker compose -f packaging/docker/docker-compose.yml build",
     "docker:run": "docker compose -f packaging/docker/docker-compose.yml build --quiet torzlink && docker compose -f packaging/docker/docker-compose.yml run --rm -it torzlink",
-    "deploy:nas": "bash tools/deploy-nas.sh"
+    "deploy:nas": "bash tools/deploy-nas.sh",
+    "deploy:from-dev": "powershell -NoProfile -ExecutionPolicy Bypass -File tools/deploy-from-dev.ps1"
   },
   "keywords": [
     "torrent",
