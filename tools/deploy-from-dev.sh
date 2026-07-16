@@ -144,6 +144,7 @@ DOCKER_GID="$(ssh_nas "stat -c '%g' /var/run/docker.sock 2>/dev/null || echo 999
 DOCKER_GID="${DOCKER_GID:-999}"
 set_env_key "${TMP_ENV}" DOCKER_GID "${DOCKER_GID}"
 info "DOCKER_GID=${DOCKER_GID} (web VPN switch socket access)"
+set_env_key "${TMP_ENV}" TORZLINK_DEPLOY_HOST_PATH "${DEPLOY_DIR}"
 
 if [[ -n "${PROXY_NET_NAME}" ]]; then
   set_env_key "${TMP_ENV}" PROXY_NET_NAME "${PROXY_NET_NAME}"

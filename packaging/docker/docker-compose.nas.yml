@@ -39,6 +39,8 @@ x-torzlink-common: &torzlink-common
     TORZLINK_DEPLOY_ENV_FILE: /run/torzlink-deploy.env
     # Apply VPN ON/OFF from the web UI without a manual redeploy
     TORZLINK_DEPLOY_DIR: /deploy
+    # Host path for docker run -v from inside the container (not the /deploy mount)
+    TORZLINK_DEPLOY_HOST_PATH: ${TORZLINK_DEPLOY_HOST_PATH:-/volume2/Docker_Configs/torzlink-deploy}
     TORZLINK_COMPOSE_FILE: /deploy/docker-compose.nas.yml
     COMPOSE_PROJECT_NAME: torzlink
     # Explicit sh — Alpine image has no bash; script is POSIX.
@@ -49,8 +51,8 @@ x-torzlink-common: &torzlink-common
     - ${TORZLINK_DOWNLOADS_HOST:-/volume1/data/media/descargas/torrents}:/downloads
     - ./.env:/run/torzlink-deploy.env
     # Deploy dir (compose + .env) + switch helper + Docker socket for profile recreate
-    - .:/deploy
-    - ./torzlink-network-switch.sh:/opt/torzlink/torzlink-network-switch.sh:ro
+    - ${TORZLINK_DEPLOY_HOST_PATH:-.}:/deploy
+    - ${TORZLINK_DEPLOY_HOST_PATH:-.}/torzlink-network-switch.sh:/opt/torzlink/torzlink-network-switch.sh:ro
     - /var/run/docker.sock:/var/run/docker.sock
 
 services:

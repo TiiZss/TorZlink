@@ -426,6 +426,7 @@ try {
   Set-EnvFileKey $tmpEnv "PGID" "1000"
   Set-EnvFileKey $tmpEnv "TZ" "Europe/Madrid"
   Set-EnvFileKey $tmpEnv "PROXY_NET_NAME" $ProxyNetName
+  Set-EnvFileKey $tmpEnv "TORZLINK_DEPLOY_HOST_PATH" $DeployDir
 
   # Prefer existing .env / local override. Remote sock probe via plink was flaky on Windows.
   $dockerGid = Coalesce (Read-DotEnvValue $tmpEnv "DOCKER_GID") (
@@ -464,7 +465,8 @@ try {
 
   $composeCmd = "set -e; cd '$DeployDir'; " +
     "docker compose --env-file .env --profile direct -f docker-compose.nas.yml down 2>/dev/null || true; " +
-    "docker compose --env-file .env --profile vpn -f docker-compose.nas.yml down 2>/dev/null || true; "
+    "docker compose --env-file .env --profile vpn -f docker-compose.nas.yml down 2>/dev/null || true; " +
+    "docker rm -f torzlink torzlink-netswitch 2>/dev/null || true; "
   if ($NetworkMode -eq "vpn") {
     # Use bash if/then/fi (not `{ ... }`) so PowerShell tooling never treats
     # remote-shell braces as script-block delimiters.
