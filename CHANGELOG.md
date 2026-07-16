@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **VPN ON/OFF without redeploy** — NAS compose wires `TORZLINK_NETWORK_SWITCH_CMD` to [`tools/torzlink-network-switch.sh`](tools/torzlink-network-switch.sh) (Docker socket + `DOCKER_GID`); web toggle starts a detached profile recreate and polls until runtime matches
+- Runtime image includes `docker-cli` / `docker-cli-compose` for the NAS network switch path
+
+### Changed
+
+- `POST /api/network` no longer waits for the switch process (avoids killing the HTTP response mid-recreate); status exposes `pending` / `switchable`
+- `deploy-from-dev` / `deploy-nas.sh install` copy the switch helper and detect `DOCKER_GID` from the host socket
+
 ## [1.7.1] — 2026-07-16
 
 NAS download path + ownership fix, deploy-from-dev hardening, and stricter duplicate-download API.
