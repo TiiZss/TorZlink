@@ -53,17 +53,19 @@ COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-torzlink}"
 export COMPOSE_PROJECT_NAME
 
 # Patch .env (idempotent with server-side TORZLINK_DEPLOY_ENV_FILE patch)
+env_owner="$(stat -c '%u:%g' "${ENV_FILE}" 2>/dev/null || echo "1000:10")"
 if grep -qE '^[[:space:]]*TORZLINK_NETWORK_MODE=' "${ENV_FILE}"; then
   tmp="$(mktemp)"
   sed -E "s/^[[:space:]]*TORZLINK_NETWORK_MODE=.*/TORZLINK_NETWORK_MODE=${mode}/" "${ENV_FILE}" >"${tmp}"
-  mv "${tmp}" "${ENV_FILE}"
+  cat "${tmp}" >"${ENV_FILE}"
+  rm -f "${tmp}"
 else
   printf '\nTORZLINK_NETWORK_MODE=%s\n' "${mode}" >>"${ENV_FILE}"
 fi
 chmod 600 "${ENV_FILE}" 2>/dev/null || true
-# Sibling runs as root — restore ownership for the NAS SSH user when possible.
+# Sibling may run as root — restore prior ownership (not PUID/PGID of media mounts).
 if [ "$(id -u)" = "0" ]; then
-  chown "${PUID:-1000}:${PGID:-1000}" "${ENV_FILE}" 2>/dev/null || true
+  chown "${env_owner}" "${ENV_FILE}" 2>/dev/null || true
 fi
 
 set -a
