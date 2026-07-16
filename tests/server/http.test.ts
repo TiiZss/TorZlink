@@ -97,8 +97,12 @@ describe("HTTP API", () => {
     publicDir = path.resolve(process.cwd(), "web");
     process.env.TORZLINK_DISABLE_DOTENV = "1";
     process.env.TORZLINK_SKIP_UPDATE = "1";
+    process.env.TORZLINK_STATE_DIR = stateDir;
     process.env.TORZLINK_DOWNLOAD_DIR = path.join(stateDir, "downloads");
     delete process.env.TORZLINK_SERVE_TOKEN;
+    delete process.env.TORZLINK_NETWORK_MODE;
+    delete process.env.TORZLINK_DEPLOY_ENV_FILE;
+    delete process.env.TORZLINK_NETWORK_SWITCH_CMD;
     await rm(path.join(stateDir, "data"), { recursive: true, force: true });
     await rm(path.join(stateDir, "config"), { recursive: true, force: true });
     await rm(path.join(stateDir, "downloads"), { recursive: true, force: true });
@@ -121,6 +125,40 @@ describe("HTTP API", () => {
       const list = await request(handler, "GET", "/api/downloads");
       expect(list.status).toBe(200);
       expect(list.json).toEqual({ items: [] });
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it("gets and sets network mode preference", async () => {
+    const runtime = await createTorzlinkRuntime();
+    try {
+      const handler: http.RequestListener = (req, res) => {
+        void handleRequest(req, res, runtime, publicDir);
+      };
+      const get = await request(handler, "GET", "/api/network");
+      expect(get.status).toBe(200);
+      expect(get.json).toMatchObject({ runtime: "direct", desired: expect.any(String) });
+
+      const setVpn = await request(
+        handler,
+        "POST",
+        "/api/network",
+        JSON.stringify({ mode: "vpn" }),
+      );
+      expect(setVpn.status).toBe(200);
+      expect(setVpn.json).toMatchObject({ ok: true, desired: "vpn" });
+
+      const again = await request(handler, "GET", "/api/network");
+      expect(again.json).toMatchObject({ desired: "vpn" });
+
+      const bad = await request(
+        handler,
+        "POST",
+        "/api/network",
+        JSON.stringify({ mode: "nope" }),
+      );
+      expect(bad.status).toBe(400);
     } finally {
       runtime.dispose();
     }
