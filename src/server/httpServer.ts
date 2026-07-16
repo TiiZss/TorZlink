@@ -6,6 +6,7 @@ import type { TorzlinkRuntime } from "../core/runtime";
 import { sanitizeDownloadInput, sanitizeMagnetInput } from "../sources/magnet";
 import type { SourceId } from "../sources/types";
 import { authorizeApi, serveToken } from "./auth";
+import { getNetworkStatus, parseNetworkMode, setNetworkMode } from "./networkMode";
 import { searchAll } from "./searchAll";
 
 const MAX_BODY = 64 * 1024;
@@ -200,6 +201,17 @@ async function handlePostDownloads(
   sendJson(res, 201, { ok: true, id: safe.id });
 }
 
+async function handlePostNetwork(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJsonBody(req, res);
+  if (!body) return;
+  const mode = parseNetworkMode(body.mode);
+  if (!mode) {
+    sendJson(res, 400, { error: "mode must be 'direct' or 'vpn'" });
+    return;
+  }
+  sendJson(res, 200, { ok: true, ...(await setNetworkMode(mode)) });
+}
+
 const DOWNLOAD_ACTION_RE = /^\/api\/downloads\/([^/]+)\/(pause|resume|cancel)$/;
 
 function handleDownloadAction(
@@ -240,6 +252,16 @@ async function handleApiRoute(
 
   if (method === "GET" && url.pathname === "/api/downloads") {
     sendJson(res, 200, { items: runtime.queue.getItems().map(serializeDownload) });
+    return true;
+  }
+
+  if (method === "GET" && url.pathname === "/api/network") {
+    sendJson(res, 200, await getNetworkStatus());
+    return true;
+  }
+
+  if (method === "POST" && url.pathname === "/api/network") {
+    await handlePostNetwork(req, res);
     return true;
   }
 
