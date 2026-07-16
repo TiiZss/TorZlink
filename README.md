@@ -201,20 +201,53 @@ On shared Docker networks, set `TORZLINK_SERVE_TOKEN` so `/api/*` requires `Auth
 
 ### NAS deploy (Ugreen + Traefik v3)
 
-Production compose uses GHCR and attaches to your existing `proxy_net`:
+**Volumes:** `/volume1` = data (downloads); `/volume2` = apps / Docker configs / deploy compose.
+
+#### From this Windows PC (no GitHub/GHCR required)
+
+Put NAS connection settings in the project `.env` (gitignored):
+
+```env
+NAS_HOST=192.168.1.5
+NAS_USER=puper
+NAS_PASSWORD=your-nas-password
+PROXY_NET_NAME=0-nas_proxy_net
+```
+
+Then:
+
+```powershell
+.\tools\deploy-from-dev.ps1
+```
+
+Builds `torzlink:vX.Y.Z` locally, copies it to the NAS, syncs compose/`.env` (including `TORZLINK_SERVE_TOKEN` / Telegram from the project `.env`), and runs compose there. Prefer an SSH key over storing `NAS_PASSWORD` when you can.
+
+Bash/WSL equivalent: `NAS_USER=… PROXY_NET_NAME=… ./tools/deploy-from-dev.sh`
+
+#### From the NAS via GHCR
 
 ```sh
-# on the NAS
-cp packaging/docker/.env.nas.example /path/to/deploy/.env
-# set PROXY_NET_NAME (docker network ls) and TORZLINK_NETWORK_MODE=direct|vpn
-bash tools/deploy-nas.sh install   # from repo; or copy script + packaging/docker
-cd /path/to/deploy && TORZLINK_DEPLOY_DIR=$PWD bash /path/to/repo/tools/deploy-nas.sh up
+# on the NAS — keep the stack under volume2
+mkdir -p /volume2/docker/torzlink && cd /volume2/docker/torzlink
+git clone --depth 1 --branch v1.7.0 https://github.com/TiiZss/TorZlink.git repo
+cp repo/packaging/docker/.env.nas.example .env
+chmod 600 .env
+# set PROXY_NET_NAME, TORZLINK_IMAGE=ghcr.io/tiizss/torzlink:v1.7.0, TORZLINK_SERVE_TOKEN=…
+export TORZLINK_DEPLOY_DIR=/volume2/docker/torzlink
+bash repo/tools/deploy-nas.sh install
+bash repo/tools/deploy-nas.sh up
 ```
 
 - **`TORZLINK_NETWORK_MODE=direct`** — TorZlink on `proxy_net`; Traefik labels on the service (`Host(\`torzlink.lan\`)`).
 - **`TORZLINK_NETWORK_MODE=vpn`** — `network_mode: container:gluetun`; paste labels from [packaging/docker/traefik-gluetun-torzlink.labels.md](packaging/docker/traefik-gluetun-torzlink.labels.md) onto Gluetun.
 
-Point Pi-hole DNS `torzlink.lan` at Traefik’s LAN IP. State: `${DOCKER_CONFIG_ROOT}/torzlink`; downloads: `${MEDIA_ROOT}/media/torzlink`.
+Point Pi-hole DNS `torzlink.lan` at Traefik’s LAN IP.
+
+| Path on NAS | Role |
+| --- | --- |
+| `/volume2/docker/torzlink` | `.env` + deploy working dir |
+| `/volume2/Docker_Configs/torzlink` | state (`queue.json`, config) → container `/data` |
+| `/volume1/data/media/torzlink` | downloads → container `/downloads` |
 
 Before opening a PR, skim [CONTRIBUTING.md](CONTRIBUTING.md); it lays out the bar with examples from real merged PRs.
 
