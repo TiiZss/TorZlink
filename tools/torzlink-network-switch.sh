@@ -60,6 +60,11 @@ if grep -qE '^[[:space:]]*TORZLINK_NETWORK_MODE=' "${ENV_FILE}"; then
 else
   printf '\nTORZLINK_NETWORK_MODE=%s\n' "${mode}" >>"${ENV_FILE}"
 fi
+chmod 600 "${ENV_FILE}" 2>/dev/null || true
+# Sibling runs as root — restore ownership for the NAS SSH user when possible.
+if [ "$(id -u)" = "0" ]; then
+  chown "${PUID:-1000}:${PGID:-1000}" "${ENV_FILE}" 2>/dev/null || true
+fi
 
 set -a
 # shellcheck disable=SC1090
@@ -68,6 +73,10 @@ set +a
 
 if [ "${APPLY}" -eq 0 ]; then
   # Hand off to a sibling so `docker rm -f torzlink` does not kill the apply steps.
+  # Volume mounts are always HOST paths — never pass the in-container /deploy mount.
+  host_deploy="${TORZLINK_DEPLOY_HOST_PATH:-}"
+  [ -n "${host_deploy}" ] || die "TORZLINK_DEPLOY_HOST_PATH is required for VPN switch handoff"
+
   img="${TORZLINK_IMAGE:-}"
   if [ -z "${img}" ]; then
     img="$(docker inspect -f '{{.Config.Image}}' torzlink 2>/dev/null || true)"
@@ -80,8 +89,9 @@ if [ "${APPLY}" -eq 0 ]; then
   docker run -d --rm --user root \
     --name "torzlink-netswitch" \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "${DEPLOY_DIR}:/deploy" \
+    -v "${host_deploy}:/deploy" \
     -e TORZLINK_DEPLOY_DIR=/deploy \
+    -e TORZLINK_DEPLOY_HOST_PATH="${host_deploy}" \
     -e TORZLINK_COMPOSE_FILE=/deploy/docker-compose.nas.yml \
     -e COMPOSE_PROJECT_NAME=torzlink \
     -e TORZLINK_IMAGE="${img}" \
