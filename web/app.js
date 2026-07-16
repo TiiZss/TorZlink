@@ -272,6 +272,17 @@ function paintNetSwitch(vpn) {
   }
 }
 
+let netPollTimer = null;
+let netPollAttempts = 0;
+
+function stopNetPoll() {
+  if (netPollTimer) {
+    clearInterval(netPollTimer);
+    netPollTimer = null;
+  }
+  netPollAttempts = 0;
+}
+
 function paintNetStatus(status) {
   if (!netStatusEl) return;
   if (status.hint) {
@@ -295,15 +306,34 @@ function paintNetwork(status) {
   currentNetMode = mode;
   paintNetSwitch(mode === "vpn");
   paintNetStatus(status);
+  if (netSwitch) {
+    netSwitch.disabled = Boolean(status.pending);
+  }
 }
 
 async function refreshNetwork() {
   try {
     const status = await api("/api/network");
     paintNetwork(status);
+    return status;
   } catch {
-    /* auth gate / offline */
+    /* auth gate / offline — during recreate the API may be briefly down */
+    return null;
   }
+}
+
+function startNetPoll() {
+  stopNetPoll();
+  netPollTimer = setInterval(() => {
+    netPollAttempts += 1;
+    void (async () => {
+      const status = await refreshNetwork();
+      if (status?.applied || netPollAttempts >= 30) {
+        stopNetPoll();
+        if (status?.applied && netSwitch) netSwitch.disabled = false;
+      }
+    })();
+  }, 2000);
 }
 
 async function setNetworkMode(mode) {
@@ -314,6 +344,9 @@ async function setNetworkMode(mode) {
       body: JSON.stringify({ mode }),
     });
     paintNetwork(status);
+    if (status.pending || (status.switchable && !status.applied)) {
+      startNetPoll();
+    }
   } catch (err) {
     paintNetwork({ desired: currentNetMode, runtime: currentNetMode, applied: true });
     if (netStatusEl) {
@@ -321,7 +354,6 @@ async function setNetworkMode(mode) {
       netStatusEl.textContent = `❯ ${err.message || "no se pudo cambiar el modo"}`;
       netStatusEl.classList.remove("ok");
     }
-  } finally {
     if (netSwitch) netSwitch.disabled = false;
   }
 }

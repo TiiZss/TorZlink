@@ -1,6 +1,6 @@
 # Next session — TorZlink backlog
 
-In progress after **v1.7.1**: web UI parity (categories, copy magnet, history, seeding); NAS redeploy + VPN apply-without-redeploy still pending.
+In progress after **v1.7.1**: web UI parity (download-to…, upload `.torrent`); NAS redeploy for the VPN auto-switch stack.
 
 ## Product invariant — Web ≡ TUI
 
@@ -25,38 +25,29 @@ In progress after **v1.7.1**: web UI parity (categories, copy magnet, history, s
 | 13 | Help / keymap contextual | N/A web | Sustituir por ayuda corta en UI (no clonar atajos Ink) |
 | 14 | Splash / branding | Parcial | Look retro alineado; splash TUI no obligatorio |
 | 15 | Notificaciones Telegram (copy/start/complete/error) | Parcial | Copy vía API; start/complete/error vía runtime serve |
-| 16 | Modo red **direct** ↔ **vpn** (NAS) | Parcial | Toggle UI VPN ON/OFF existe; **falta apply sin redeploy** (ver invariante abajo) |
+| 16 | Modo red **direct** ↔ **vpn** (NAS) | OK (código) | Toggle + `SWITCH_CMD` + socket; falta smoke en NAS tras redeploy |
 
 **Regla de trabajo:** cada PR de producto web debe avanzar al menos una fila “Falta” → “Parcial/OK” y compartir lógica con el core (no reimplementar scrapers/queue en el front).
 
 ## Ops invariant — VPN ON/OFF sin redeploy
 
-**El switch VPN de la web debe aplicar el cambio de salida (direct ↔ Gluetun) sin `deploy-from-dev` / rebuild de imagen ni un redeploy manual del operador.**
+**Estado: implementado en código** (pendiente validar en NAS con `deploy-from-dev`).
 
-Hoy el compose usa perfiles/`network_mode: container:gluetun`, que obliga a recrear el contenedor. Objetivo de producto:
-
-- Clic en **VPN ON/OFF** → el swarm sale (o deja de salir) por VPN de forma efectiva
-- Sin pedir al usuario que vuelva a desplegar desde el PC
-- Aceptable: recrear/reenganchar el contenedor TorZlink vía API/agente en el NAS (p. ej. `deploy-nas.sh switch` o Docker socket / sidecar privilegiado), **siempre que sea automático tras el clic**
-- No aceptable como estado final: solo guardar preferencia en `.env` / `network-mode.json` y dejar el runtime igual hasta un redeploy humano
-
-Ideas de diseño (elegir una en implementación):
-
-1. Sidecar/host helper con Docker socket que ejecuta `compose --profile … up -d` al recibir el POST `/api/network`
-2. Contenedor siempre en `proxy_net` + routing/policy vía Gluetun (sin cambiar `network_mode`) si el homelab lo permite
-3. `TORZLINK_NETWORK_SWITCH_CMD` cableado por defecto en el compose NAS al script de switch del host
+- Compose NAS monta Docker socket + `tools/torzlink-network-switch.sh` vía `TORZLINK_NETWORK_SWITCH_CMD`
+- `POST /api/network` persiste preferencia, parchea `.env`, arranca el switch en **detached** y la UI hace polling hasta `runtime === desired`
+- Requiere `DOCKER_GID` correcto + `TORZLINK_SERVE_TOKEN` (ver ADR-001)
+- Phase 2 (opcional): sidecar sin socket en el proceso BitTorrent, o routing Gluetun sin cambiar `network_mode`
 
 ## Recommended order
 
 | Priority | Area | Item | Notes |
 | --- | --- | --- | --- |
-| 1 | Ops | **VPN ON/OFF sin redeploy** | Switch web aplica direct↔vpn automáticamente; ver invariante arriba |
-| 2 | Ops | NAS redeploy (UI retro + switch VPN + parity incremental) | `deploy-from-dev` cuando el look/dev esté OK |
-| 3 | Product | Web remaining parity | download-to…, upload `.torrent` (config downloadDir/trackers OK) |
-| 4 | QA | Manual TUI download smoke test in Docker (Windows host) | Validate end-to-end on the primary dev machine |
-| 5 | Docs | Windows-specific Docker volume docs | `%cd%`, WSL2, Desktop bind-mount quirks |
-| 6 | Quality P2 | Zod schema for `config.json` | `downloadDir`, `trackers[]` validation at load |
-| 7 | Quality P2 | Scraper anti-corruption layer | Rebuild magnet from infoHash; no raw HTML passthrough |
+| 1 | Ops | NAS redeploy + smoke VPN toggle | `deploy-from-dev` con imagen nueva; clic VPN ON/OFF → recreate sin SSH |
+| 2 | Product | Web remaining parity | download-to…, upload `.torrent` (config downloadDir/trackers OK) |
+| 3 | QA | Manual TUI download smoke test in Docker (Windows host) | Validate end-to-end on the primary dev machine |
+| 4 | Docs | Windows-specific Docker volume docs | `%cd%`, WSL2, Desktop bind-mount quirks |
+| 5 | Quality P2 | Zod schema for `config.json` | `downloadDir`, `trackers[]` validation at load |
+| 6 | Quality P2 | Scraper anti-corruption layer | Rebuild magnet from infoHash; no raw HTML passthrough |
 
 ## Also on the board
 

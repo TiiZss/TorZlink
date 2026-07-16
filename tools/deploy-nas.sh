@@ -60,6 +60,16 @@ cmd_install() {
     chmod 600 "${ENV_FILE}" || true
     info "using existing ${ENV_FILE}"
   fi
+  local switch_src="${SCRIPT_DIR}/torzlink-network-switch.sh"
+  if [[ -f "${switch_src}" ]]; then
+    cp "${switch_src}" "${DEPLOY_DIR}/torzlink-network-switch.sh"
+    chmod +x "${DEPLOY_DIR}/torzlink-network-switch.sh" || true
+    info "installed ${DEPLOY_DIR}/torzlink-network-switch.sh (web VPN toggle)"
+  fi
+  if [[ -f "${COMPOSE_FILE}" && "${COMPOSE_FILE}" != "${DEPLOY_DIR}/docker-compose.nas.yml" ]]; then
+    cp "${COMPOSE_FILE}" "${DEPLOY_DIR}/docker-compose.nas.yml"
+    info "copied compose → ${DEPLOY_DIR}/docker-compose.nas.yml"
+  fi
   load_env
   local data_dir="${DOCKER_CONFIG_ROOT:-/volume2/Docker_Configs}/torzlink"
   local dl_dir="${TORZLINK_DOWNLOADS_HOST:-${MEDIA_ROOT:-/volume1/data}/media/descargas/torrents}"
@@ -75,6 +85,9 @@ cmd_install() {
   fi
   if [[ "${TORZLINK_NETWORK_MODE:-direct}" == "vpn" ]]; then
     info "vpn mode: paste Traefik labels from packaging/docker/traefik-gluetun-torzlink.labels.md onto gluetun"
+  fi
+  if [[ -z "${DOCKER_GID:-}" ]]; then
+    info "hint: set DOCKER_GID=\$(stat -c '%g' /var/run/docker.sock) for in-UI VPN switch"
   fi
   info "DNS: point torzlink.lan at Traefik LAN IP (e.g. 192.168.1.2)"
   info "next: $(basename "$0") up"

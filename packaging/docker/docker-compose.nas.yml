@@ -18,6 +18,9 @@ x-torzlink-common: &torzlink-common
   # Match NAS media ownership (Ugreen media dirs are typically UID 1000).
   # Image default USER torzlink (uid 100) cannot write those mounts (EACCES).
   user: "${PUID:-1000}:${PGID:-1000}"
+  # Docker socket group (docker.sock) — required for in-UI VPN↔direct switch
+  group_add:
+    - "${DOCKER_GID:-999}"
   command: ["serve", "--host", "0.0.0.0", "--port", "8787"]
   environment:
     TZ: ${TZ:-Europe/Madrid}
@@ -32,11 +35,19 @@ x-torzlink-common: &torzlink-common
     TORZLINK_NETWORK_MODE: ${TORZLINK_NETWORK_MODE:-direct}
     # Deploy .env (compose project dir) so UI can persist Red↔VPN preference
     TORZLINK_DEPLOY_ENV_FILE: /run/torzlink-deploy.env
+    # Apply VPN ON/OFF from the web UI without a manual redeploy
+    TORZLINK_DEPLOY_DIR: /deploy
+    TORZLINK_COMPOSE_FILE: /deploy/docker-compose.nas.yml
+    TORZLINK_NETWORK_SWITCH_CMD: /opt/torzlink/torzlink-network-switch.sh
   volumes:
     - ${DOCKER_CONFIG_ROOT}/torzlink:/data
     # Host path for completed/active downloads (same tree as qBittorrent media)
     - ${TORZLINK_DOWNLOADS_HOST:-/volume1/data/media/descargas/torrents}:/downloads
     - ./.env:/run/torzlink-deploy.env
+    # Deploy dir (compose + .env) + switch helper + Docker socket for profile recreate
+    - .:/deploy
+    - ./torzlink-network-switch.sh:/opt/torzlink/torzlink-network-switch.sh:ro
+    - /var/run/docker.sock:/var/run/docker.sock
 
 services:
   torzlink:

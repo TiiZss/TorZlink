@@ -257,6 +257,7 @@ bash repo/tools/deploy-nas.sh up
 
 - **`TORZLINK_NETWORK_MODE=direct`** — TorZlink on `proxy_net`; Traefik labels on the service (`Host(\`torzlink.lan\`)`).
 - **`TORZLINK_NETWORK_MODE=vpn`** — `network_mode: container:gluetun`; paste labels from [packaging/docker/traefik-gluetun-torzlink.labels.md](packaging/docker/traefik-gluetun-torzlink.labels.md) onto Gluetun.
+- **Web VPN toggle** — with the NAS compose defaults (Docker socket + `torzlink-network-switch.sh`), **VPN ON/OFF** in the UI recreates the profile automatically. Set `DOCKER_GID` to the host socket group (`stat -c '%g' /var/run/docker.sock`) and keep `TORZLINK_SERVE_TOKEN` set — the socket is full Docker access for that project.
 
 Point Pi-hole DNS `torzlink.lan` at Traefik’s LAN IP.
 
@@ -413,8 +414,8 @@ kanban
   column Next session
     Web UI feature parity clone of TUI
     Categories History Seeding Copy config trackers
-    VPN ON OFF apply without redeploy
-    NAS redeploy retro UI VPN switch
+    NAS redeploy smoke VPN toggle
+    Web parity download-to torrent upload
     Manual interactive download test in Docker TUI
     Windows-specific Docker volume docs
     Zod schema validation for config.json
@@ -465,8 +466,8 @@ kanban
 | ✅ Done | Product | Web UI parity — categorías, sort, hideDead, Copy magnet, History, Seeding, Config |
 | ✅ Done | Product | Web `GET/PATCH /api/config` (downloadDir + trackers) |
 | 🔜 Next | Product | **Web ≡ TUI** — config downloadDir/trackers, upload `.torrent`, download-to… — [docs/next-session.md](docs/next-session.md) |
-| 🔜 Next | Ops | **VPN ON/OFF sin redeploy** — el switch de la web debe aplicar direct↔Gluetun automáticamente |
-| 🔜 Next | Ops | NAS redeploy — UI retro + switch VPN + parity incremental |
+| ✅ Done | Ops | **VPN ON/OFF sin redeploy** — `TORZLINK_NETWORK_SWITCH_CMD` + Docker socket; UI polling |
+| 🔜 Next | Ops | NAS redeploy — validar toggle VPN en homelab + parity incremental |
 | 🔜 Next | QA | Manual TUI download smoke test in Docker (Windows host) |
 | 🔜 Next | Docs | Windows-specific Docker volume docs |
 | 🔜 Next | Quality P2 | Zod schema for `config.json` (`downloadDir`, `trackers[]`) |

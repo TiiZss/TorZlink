@@ -21,7 +21,8 @@ RUN npm run build
 
 # ── runtime: minimal image with clipboard helper ────────────────────────────
 FROM node:22-alpine AS runtime
-RUN apk add --no-cache tini xclip \
+# docker-cli: used only when NAS compose mounts the Docker socket for VPN↔direct switch
+RUN apk add --no-cache tini xclip docker-cli docker-cli-compose \
   && addgroup -S torzlink \
   && adduser -S torzlink -G torzlink \
   && mkdir -p /data /downloads \

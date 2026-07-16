@@ -115,9 +115,11 @@ docker save -o "${TAR}" "${IMAGE_REF}"
 scp_to "${TAR}" "${DEPLOY_DIR}/torzlink-image.tar"
 ssh_nas "docker load -i '${DEPLOY_DIR}/torzlink-image.tar' && rm -f '${DEPLOY_DIR}/torzlink-image.tar'"
 
-info "copy compose assets"
+info "copy compose assets + network switch helper"
 scp_to "${REPO_ROOT}/packaging/docker/docker-compose.nas.yml" "${DEPLOY_DIR}/docker-compose.nas.yml"
 scp_to "${REPO_ROOT}/packaging/docker/.env.nas.example" "${DEPLOY_DIR}/.env.nas.example"
+scp_to "${REPO_ROOT}/tools/torzlink-network-switch.sh" "${DEPLOY_DIR}/torzlink-network-switch.sh"
+ssh_nas "chmod +x '${DEPLOY_DIR}/torzlink-network-switch.sh'"
 scp_to "${REPO_ROOT}/packaging/docker/traefik-gluetun-torzlink.labels.md" "${DEPLOY_DIR}/traefik-gluetun-torzlink.labels.md" || true
 
 TMP_ENV="$(mktemp)"
@@ -137,6 +139,11 @@ set_env_key "${TMP_ENV}" TORZLINK_DOWNLOADS_HOST "/volume1/data/media/descargas/
 set_env_key "${TMP_ENV}" PUID "1000"
 set_env_key "${TMP_ENV}" PGID "1000"
 set_env_key "${TMP_ENV}" TZ "Europe/Madrid"
+
+DOCKER_GID="$(ssh_nas "stat -c '%g' /var/run/docker.sock 2>/dev/null || echo 999" | tr -d '\r\n')"
+DOCKER_GID="${DOCKER_GID:-999}"
+set_env_key "${TMP_ENV}" DOCKER_GID "${DOCKER_GID}"
+info "DOCKER_GID=${DOCKER_GID} (web VPN switch socket access)"
 
 if [[ -n "${PROXY_NET_NAME}" ]]; then
   set_env_key "${TMP_ENV}" PROXY_NET_NAME "${PROXY_NET_NAME}"

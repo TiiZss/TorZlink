@@ -57,6 +57,7 @@ $Dockerfile = Join-Path $RepoRoot "packaging\docker\Dockerfile"
 $ComposeSrc = Join-Path $RepoRoot "packaging\docker\docker-compose.nas.yml"
 $EnvExample = Join-Path $RepoRoot "packaging\docker\.env.nas.example"
 $LabelsSrc = Join-Path $RepoRoot "packaging\docker\traefik-gluetun-torzlink.labels.md"
+$SwitchSrc = Join-Path $RepoRoot "tools\torzlink-network-switch.sh"
 
 # Priority: CLI param > process env > project .env > default
 $NasHost = Coalesce $NasHost (Coalesce $env:NAS_HOST (Coalesce (Read-DotEnvValue $LocalEnv "NAS_HOST") "192.168.1.5"))
@@ -205,6 +206,22 @@ function Invoke-Nas([string]$RemoteCmd) {
   if ($LASTEXITCODE -ne 0) { Die "ssh failed (exit $LASTEXITCODE): $RemoteCmd" }
 }
 
+function Invoke-NasCapture([string]$RemoteCmd) {
+  if ($usePassword) {
+    $arg = "$(Get-PlinkPrefix $true) $(ConvertTo-QuotedWinArg $RemoteCmd)"
+    $res = Invoke-PuttyProcess -FilePath $plink -Arguments $arg
+    if ($res.Code -ne 0) { Die "plink failed (exit $($res.Code)): $RemoteCmd" }
+    return [string]$res.Out
+  }
+
+  $sshArgs = @()
+  $sshArgs += $sshExtra
+  $sshArgs += @("-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", $Remote, $RemoteCmd)
+  $out = & ssh @sshArgs
+  if ($LASTEXITCODE -ne 0) { Die "ssh failed (exit $LASTEXITCODE): $RemoteCmd" }
+  return ($out | Out-String)
+}
+
 function Copy-ToNas([string]$LocalPath, [string]$RemotePath) {
   if ($usePassword) {
     # Stream via plink+cat — more reliable than pscp for absolute Linux paths on Windows
@@ -348,9 +365,13 @@ try {
     Remove-Item $tar -Force -ErrorAction SilentlyContinue
   }
 
-  Info "copy compose + examples"
+  Info "copy compose + examples + network switch helper"
   Copy-ToNas $ComposeSrc "$DeployDir/docker-compose.nas.yml"
   Copy-ToNas $EnvExample "$DeployDir/.env.nas.example"
+  if (Test-Path $SwitchSrc) {
+    Copy-ToNas $SwitchSrc "$DeployDir/torzlink-network-switch.sh"
+    Invoke-Nas "chmod +x '$DeployDir/torzlink-network-switch.sh'"
+  }
   if (Test-Path $LabelsSrc) {
     Copy-ToNas $LabelsSrc "$DeployDir/traefik-gluetun-torzlink.labels.md"
   }
@@ -373,6 +394,12 @@ try {
   Set-EnvFileKey $tmpEnv "PGID" "1000"
   Set-EnvFileKey $tmpEnv "TZ" "Europe/Madrid"
   Set-EnvFileKey $tmpEnv "PROXY_NET_NAME" $ProxyNetName
+
+  $dockerGidRaw = Invoke-NasCapture "stat -c '%g' /var/run/docker.sock 2>/dev/null || echo 999"
+  $dockerGid = ([string]$dockerGidRaw).Trim() -replace "[^\d].*", ""
+  if (-not $dockerGid) { $dockerGid = "999" }
+  Set-EnvFileKey $tmpEnv "DOCKER_GID" $dockerGid
+  Info "DOCKER_GID=$dockerGid (web VPN switch socket access)"
 
   $token = Read-DotEnvValue $LocalEnv "TORZLINK_SERVE_TOKEN"
   if (-not $token) { $token = Read-DotEnvValue $tmpEnv "TORZLINK_SERVE_TOKEN" }
