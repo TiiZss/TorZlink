@@ -8,6 +8,15 @@ cd "$ROOT"
 fail() { echo "pre-release FAIL: $1" >&2; exit 1; }
 ok() { echo "pre-release OK: $1"; }
 
+# Secrets must never be versioned
+if git ls-files --error-unmatch .env >/dev/null 2>&1; then
+  fail ".env is tracked by git — run: git rm --cached .env && verify .gitignore lists .env"
+fi
+if git ls-files | grep -E '(^|/)\.env$' >/dev/null 2>&1; then
+  fail "a .env file is tracked — remove it with git rm --cached and rotate secrets"
+fi
+ok ".env not tracked"
+
 json_version() {
   grep -m1 '"version"' "$1" | sed -E 's/.*"version": "([^"]+)".*/\1/'
 }
