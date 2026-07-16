@@ -38,7 +38,8 @@ x-torzlink-common: &torzlink-common
     # Apply VPN ON/OFF from the web UI without a manual redeploy
     TORZLINK_DEPLOY_DIR: /deploy
     TORZLINK_COMPOSE_FILE: /deploy/docker-compose.nas.yml
-    TORZLINK_NETWORK_SWITCH_CMD: /opt/torzlink/torzlink-network-switch.sh
+    # Explicit sh — Alpine image has no bash; script is POSIX.
+    TORZLINK_NETWORK_SWITCH_CMD: sh /opt/torzlink/torzlink-network-switch.sh
   volumes:
     - ${DOCKER_CONFIG_ROOT}/torzlink:/data
     # Host path for completed/active downloads (same tree as qBittorrent media)
