@@ -29,10 +29,14 @@ x-torzlink-common: &torzlink-common
     TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
     TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}
     TORZLINK_SERVE_TOKEN: ${TORZLINK_SERVE_TOKEN:-}
+    TORZLINK_NETWORK_MODE: ${TORZLINK_NETWORK_MODE:-direct}
+    # Deploy .env (compose project dir) so UI can persist Red↔VPN preference
+    TORZLINK_DEPLOY_ENV_FILE: /run/torzlink-deploy.env
   volumes:
     - ${DOCKER_CONFIG_ROOT}/torzlink:/data
     # Host path for completed/active downloads (same tree as qBittorrent media)
     - ${TORZLINK_DOWNLOADS_HOST:-/volume1/data/media/descargas/torrents}:/downloads
+    - ./.env:/run/torzlink-deploy.env
 
 services:
   torzlink:

@@ -158,6 +158,28 @@ cmd_uninstall() {
   fi
 }
 
+cmd_switch() {
+  local mode="${1:-}"
+  case "${mode}" in
+    direct|vpn) ;;
+    *) die "usage: $(basename "$0") switch direct|vpn" ;;
+  esac
+  [[ -f "${ENV_FILE}" ]] || die "missing ${ENV_FILE} — run: $(basename "$0") install"
+  if grep -qE '^[[:space:]]*TORZLINK_NETWORK_MODE=' "${ENV_FILE}"; then
+    # portable in-place edit without relying on GNU sed -i
+    local tmp
+    tmp="$(mktemp)"
+    sed -E "s/^[[:space:]]*TORZLINK_NETWORK_MODE=.*/TORZLINK_NETWORK_MODE=${mode}/" "${ENV_FILE}" > "${tmp}"
+    mv "${tmp}" "${ENV_FILE}"
+  else
+    printf '\nTORZLINK_NETWORK_MODE=%s\n' "${mode}" >> "${ENV_FILE}"
+  fi
+  chmod 600 "${ENV_FILE}" || true
+  info "TORZLINK_NETWORK_MODE=${mode}"
+  load_env
+  cmd_up
+}
+
 usage() {
   cat <<EOF
 usage: $(basename "$0") <command>
@@ -165,6 +187,7 @@ usage: $(basename "$0") <command>
   install     create .env + data/download dirs
   up          pull image and start (honours TORZLINK_NETWORK_MODE)
   update      same as up
+  switch      set TORZLINK_NETWORK_MODE (direct|vpn) and up
   down        stop containers
   logs        follow logs
   status      mode, container, health
@@ -181,6 +204,7 @@ main() {
     install) cmd_install "$@" ;;
     up) cmd_up "$@" ;;
     update) cmd_update "$@" ;;
+    switch) cmd_switch "$@" ;;
     down) cmd_down "$@" ;;
     logs) cmd_logs "$@" ;;
     status) cmd_status "$@" ;;
