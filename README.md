@@ -199,6 +199,18 @@ Open `http://127.0.0.1:8787`. Endpoints: `GET /health`, `GET /api/auth`, `GET /a
 
 On shared Docker networks, set `TORZLINK_SERVE_TOKEN` so `/api/*` requires `Authorization: Bearer …` (the UI prompts for the token).
 
+Search across curated sources, then queue downloads from the browser — same dark terminal look, with a VPN switch for NAS/Gluetun stacks:
+
+<p align="center">
+  <img src="assets/preview/web-search.svg" alt="TorZlink Web UI: search results with Descargar actions" style="max-width: 832px; width: 100%; height: auto;">
+</p>
+
+The queue panel shows live progress, speed, peers, and pause/cancel controls:
+
+<p align="center">
+  <img src="assets/preview/web-queue.svg" alt="TorZlink Web UI: download queue with progress and controls" style="max-width: 832px; width: 100%; height: auto;">
+</p>
+
 ### NAS deploy (Ugreen + Traefik v3)
 
 **Volumes:** `/volume1` = data (downloads); `/volume2` = apps / Docker configs / deploy compose.
@@ -394,6 +406,10 @@ kanban
     Web UI torzlink serve search plus queue API
     NAS deploy Traefik direct vpn switch deploy-nas.sh
   column Next session
+    Web UI feature parity clone of TUI
+    Categories History Seeding Copy config trackers
+    VPN ON OFF apply without redeploy
+    NAS redeploy retro UI VPN switch
     Manual interactive download test in Docker TUI
     Windows-specific Docker volume docs
     Zod schema validation for config.json
@@ -439,9 +455,12 @@ kanban
 | ✅ Done | Release | v1.7.0 published — [GitHub Release](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.0) + GHCR `:v1.7.0` / `:latest` |
 | ✅ Done | Release | v1.7.1 — NAS `TORZLINK_DOWNLOADS_HOST` + PUID/PGID + deploy-from-dev fixes |
 | ✅ Done | Docs | Agent workflow — [docs/agent-workflow.md](docs/agent-workflow.md) + `npm run pre-release` |
-| ✅ Done | Product | Web UI + API (`torzlink serve`) — search + download queue |
+| ✅ Done | Product | Web UI + API (`torzlink serve`) — search + download queue (MVP) |
 | ✅ Done | Ops | NAS deploy — Traefik v3, `TORZLINK_NETWORK_MODE=direct\|vpn`, `tools/deploy-nas.sh` |
-| 🔜 Next | QA | Manual TUI download smoke test in Docker (Windows host) — [docs/next-session.md](docs/next-session.md) |
+| 🔜 Next | Product | **Web ≡ TUI** — misma funcionalidad que la TUI (categorías, History, Seeding, Copy, config, trackers) — [docs/next-session.md](docs/next-session.md) |
+| 🔜 Next | Ops | **VPN ON/OFF sin redeploy** — el switch de la web debe aplicar direct↔Gluetun automáticamente |
+| 🔜 Next | Ops | NAS redeploy — UI retro + switch VPN + parity incremental |
+| 🔜 Next | QA | Manual TUI download smoke test in Docker (Windows host) |
 | 🔜 Next | Docs | Windows-specific Docker volume docs |
 | 🔜 Next | Quality P2 | Zod schema for `config.json` (`downloadDir`, `trackers[]`) |
 | 🔜 Next | Quality P2 | Scraper anti-corruption layer: rebuild magnet from infoHash |
