@@ -81,8 +81,12 @@ function startSwitchCmd(mode: NetworkMode): { ok: boolean; detail?: string } {
   if (!cmd) return { ok: false };
 
   try {
-    const child = spawn(cmd, [mode], {
-      shell: true,
+    // Prefer argv form when SWITCH_CMD is "sh /path/script.sh" (Alpine has no bash).
+    const parts = cmd.match(/(?:[^\s"]+|"[^"]*")+/g)?.map((p) => p.replace(/^"|"$/g, "")) ?? [cmd];
+    const file = parts[0] ?? cmd;
+    const baseArgs = parts.slice(1);
+    const child = spawn(file, [...baseArgs, mode], {
+      shell: false,
       env: process.env,
       detached: true,
       stdio: "ignore",

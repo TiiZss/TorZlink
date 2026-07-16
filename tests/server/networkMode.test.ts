@@ -72,7 +72,7 @@ describe("networkMode", () => {
   });
 
   it("starts SWITCH_CMD detached and marks pending", async () => {
-    process.env.TORZLINK_NETWORK_SWITCH_CMD = "/opt/torzlink/torzlink-network-switch.sh";
+    process.env.TORZLINK_NETWORK_SWITCH_CMD = "sh /opt/torzlink/torzlink-network-switch.sh";
     process.env.TORZLINK_NETWORK_MODE = "direct";
 
     const status = await setNetworkMode("vpn");
@@ -81,9 +81,9 @@ describe("networkMode", () => {
     expect(status.applied).toBe(false);
     expect(status.hint).toMatch(/Recreando/i);
     expect(spawn).toHaveBeenCalledWith(
-      "/opt/torzlink/torzlink-network-switch.sh",
-      ["vpn"],
-      expect.objectContaining({ detached: true, shell: true, stdio: "ignore" }),
+      "sh",
+      ["/opt/torzlink/torzlink-network-switch.sh", "vpn"],
+      expect.objectContaining({ detached: true, shell: false, stdio: "ignore" }),
     );
     const child = vi.mocked(spawn).mock.results[0]?.value as { unref: ReturnType<typeof vi.fn> };
     expect(child.unref).toHaveBeenCalled();

@@ -1,8 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/sh
 # Apply TorZlink network mode (direct|vpn) by recreating the compose profile.
 # Invoked from the container via TORZLINK_NETWORK_SWITCH_CMD (detached).
+# POSIX sh — Alpine runtime has no bash.
 # Requires: docker CLI + compose v2, Docker socket, deploy dir with .env + compose.
-set -euo pipefail
+set -eu
 
 mode="${1:-}"
 case "${mode}" in
@@ -13,7 +14,14 @@ case "${mode}" in
     ;;
 esac
 
-DEPLOY_DIR="${TORZLINK_DEPLOY_DIR:-/deploy}"
+if [ -n "${TORZLINK_DEPLOY_DIR:-}" ]; then
+  DEPLOY_DIR="${TORZLINK_DEPLOY_DIR}"
+elif [ -f "./.env" ] && [ -f "./docker-compose.nas.yml" ]; then
+  DEPLOY_DIR="$(pwd)"
+else
+  DEPLOY_DIR="/deploy"
+fi
+
 ENV_FILE="${TORZLINK_DEPLOY_ENV_HOST:-${DEPLOY_DIR}/.env}"
 COMPOSE_FILE="${TORZLINK_COMPOSE_FILE:-${DEPLOY_DIR}/docker-compose.nas.yml}"
 
@@ -25,8 +33,8 @@ need_cmd() {
 }
 
 need_cmd docker
-[[ -f "${ENV_FILE}" ]] || die "missing ${ENV_FILE}"
-[[ -f "${COMPOSE_FILE}" ]] || die "missing ${COMPOSE_FILE}"
+[ -f "${ENV_FILE}" ] || die "missing ${ENV_FILE}"
+[ -f "${COMPOSE_FILE}" ] || die "missing ${COMPOSE_FILE}"
 
 if ! docker compose version >/dev/null 2>&1; then
   die "docker compose not found (need Compose v2)"
@@ -46,13 +54,13 @@ fi
 
 set -a
 # shellcheck disable=SC1090
-source "${ENV_FILE}"
+. "${ENV_FILE}"
 set +a
 
-if [[ "${mode}" == "direct" ]]; then
-  [[ -n "${PROXY_NET_NAME:-}" ]] || die "PROXY_NET_NAME is required for direct mode"
+if [ "${mode}" = "direct" ]; then
+  [ -n "${PROXY_NET_NAME:-}" ] || die "PROXY_NET_NAME is required for direct mode"
 fi
-if [[ "${mode}" == "vpn" ]]; then
+if [ "${mode}" = "vpn" ]; then
   g="${GLUETUN_CONTAINER_NAME:-gluetun}"
   docker inspect -f '{{.State.Running}}' "${g}" 2>/dev/null | grep -qx true \
     || die "gluetun container '${g}' is not running"
@@ -63,7 +71,7 @@ compose() {
 }
 
 info "switching TorZlink to profile=${mode}"
-if [[ "${mode}" == "direct" ]]; then
+if [ "${mode}" = "direct" ]; then
   docker compose --env-file "${ENV_FILE}" --profile vpn -f "${COMPOSE_FILE}" down 2>/dev/null || true
 else
   docker compose --env-file "${ENV_FILE}" --profile direct -f "${COMPOSE_FILE}" down 2>/dev/null || true
