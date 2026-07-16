@@ -158,7 +158,7 @@ describe("HTTP API", () => {
         JSON.stringify({ input: hash }),
       );
       expect(add.status).toBe(201);
-      expect(add.json).toMatchObject({ ok: true, id: hash, existed: false });
+      expect(add.json).toMatchObject({ ok: true, id: hash });
 
       const dup = await request(
         handler,
@@ -166,8 +166,8 @@ describe("HTTP API", () => {
         "/api/downloads",
         JSON.stringify({ input: hash }),
       );
-      expect(dup.status).toBe(200);
-      expect(dup.json).toMatchObject({ ok: true, id: hash, existed: true });
+      expect(dup.status).toBe(409);
+      expect(dup.json).toMatchObject({ ok: false, error: "already in queue", id: hash });
 
       const list = await request(handler, "GET", "/api/downloads");
       expect((list.json as { items: unknown[] }).items).toHaveLength(1);

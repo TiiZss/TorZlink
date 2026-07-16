@@ -6,7 +6,7 @@ Finding torrents has become frustrating due to misleading ads, redirects, and br
 
 TorZlink solves this problem from the command line. With no initial setup required, it lets you search simultaneously across an indexed catalog of reputable sources. Select your file and download it directly to your local machine—cleanly, quickly, and securely.
 
-> **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink) by [bairon (@baairon)](https://github.com/baairon). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, security hardening, and fixes for headless/container environments. **Latest release:** [v1.7.0](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.0). See [Differences from upstream](#differences-from-upstream), [Acknowledgments](#acknowledgments), and the [Changelog](CHANGELOG.md).
+> **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink) by [bairon (@baairon)](https://github.com/baairon). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, security hardening, and fixes for headless/container environments. **Latest release:** [v1.7.1](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.1). See [Differences from upstream](#differences-from-upstream), [Acknowledgments](#acknowledgments), and the [Changelog](CHANGELOG.md).
 
 ## Get started
 
@@ -201,20 +201,55 @@ On shared Docker networks, set `TORZLINK_SERVE_TOKEN` so `/api/*` requires `Auth
 
 ### NAS deploy (Ugreen + Traefik v3)
 
-Production compose uses GHCR and attaches to your existing `proxy_net`:
+**Volumes:** `/volume1` = data (downloads); `/volume2` = apps / Docker configs / deploy compose.
+
+#### From this Windows PC (no GitHub/GHCR required)
+
+Put NAS connection settings in the project `.env` (gitignored):
+
+```env
+NAS_HOST=ip_nas
+NAS_USER=user-name
+NAS_PASSWORD=your-nas-password
+PROXY_NET_NAME=0-nas_proxy_net
+```
+
+Then:
+
+```powershell
+.\tools\deploy-from-dev.ps1
+```
+
+Builds `torzlink:vX.Y.Z` locally, copies it to the NAS, syncs compose/`.env` (including `TORZLINK_SERVE_TOKEN` / Telegram from the project `.env`), and runs compose there. Prefer an SSH key over storing `NAS_PASSWORD` when you can.
+
+Bash/WSL equivalent: `NAS_USER=… PROXY_NET_NAME=… ./tools/deploy-from-dev.sh`
+
+#### From the NAS via GHCR
 
 ```sh
-# on the NAS
-cp packaging/docker/.env.nas.example /path/to/deploy/.env
-# set PROXY_NET_NAME (docker network ls) and TORZLINK_NETWORK_MODE=direct|vpn
-bash tools/deploy-nas.sh install   # from repo; or copy script + packaging/docker
-cd /path/to/deploy && TORZLINK_DEPLOY_DIR=$PWD bash /path/to/repo/tools/deploy-nas.sh up
+# on the NAS — keep the stack under volume2
+mkdir -p /volume2/docker/torzlink && cd /volume2/docker/torzlink
+git clone --depth 1 --branch v1.7.1 https://github.com/TiiZss/TorZlink.git repo
+cp repo/packaging/docker/.env.nas.example .env
+chmod 600 .env
+# set PROXY_NET_NAME, TORZLINK_IMAGE=ghcr.io/tiizss/torzlink:v1.7.1, TORZLINK_SERVE_TOKEN=…
+export TORZLINK_DEPLOY_DIR=/volume2/docker/torzlink
+bash repo/tools/deploy-nas.sh install
+bash repo/tools/deploy-nas.sh up
 ```
 
 - **`TORZLINK_NETWORK_MODE=direct`** — TorZlink on `proxy_net`; Traefik labels on the service (`Host(\`torzlink.lan\`)`).
 - **`TORZLINK_NETWORK_MODE=vpn`** — `network_mode: container:gluetun`; paste labels from [packaging/docker/traefik-gluetun-torzlink.labels.md](packaging/docker/traefik-gluetun-torzlink.labels.md) onto Gluetun.
 
-Point Pi-hole DNS `torzlink.lan` at Traefik’s LAN IP. State: `${DOCKER_CONFIG_ROOT}/torzlink`; downloads: `${MEDIA_ROOT}/media/torzlink`.
+Point Pi-hole DNS `torzlink.lan` at Traefik’s LAN IP.
+
+| Path on NAS | Role |
+| --- | --- |
+| `/volume2/docker/torzlink` | `.env` + deploy working dir |
+| `/volume2/Docker_Configs/torzlink` | state (`queue.json`, config) → container `/data` |
+| `/volume1/data/media/descargas/torrents` | downloads → container `/downloads` (`TORZLINK_DOWNLOADS_HOST`) |
+
+**If every `*.lan` returns Traefik 404:** the Docker provider may be broken after a Docker Engine upgrade (`client version 1.24 is too old`). Fix in `/volume2/Docker_Configs/0-nas/docker-compose.yml`: use `traefik:v3.6` (or newer) and set `DOCKER_API_VERSION=1.44` on the Traefik service, then `docker compose up -d traefik`.
 
 Before opening a PR, skim [CONTRIBUTING.md](CONTRIBUTING.md); it lays out the bar with examples from real merged PRs.
 
@@ -342,6 +377,7 @@ kanban
     Tag v1.5.0 release
     Tag v1.6.0 release
     Tag v1.7.0 release web UI NAS Traefik
+    Tag v1.7.1 NAS downloads path PUID deploy hardening
     Telegram .magnet attachments + completion summary
     Security roadmap in README project board
     CI security gates gitleaks npm audit Trivy
@@ -386,7 +422,7 @@ kanban
 | ✅ Done | Docker | Env-based paths and clipboard for headless |
 | ✅ Done | Runtime | WebTorrent NAT/UTP hardening in containers |
 | ✅ Done | CI | Matrix Linux / macOS / Windows + Docker build + launcher smoke |
-| ✅ Done | Release | Workflow (`.github/workflows/release.yml`) + **v1.7.0** |
+| ✅ Done | Release | Workflow (`.github/workflows/release.yml`) + **v1.7.1** |
 | ✅ Done | Docs | Changelog, troubleshooting, upstream diff, security roadmap |
 | ✅ Done | UX | Root launchers, TorZlink branding, truecolor in Docker |
 | ✅ Done | Telegram | `.magnet` attachments on copy/start; completion summary without magnet URI |
@@ -401,6 +437,7 @@ kanban
 | ✅ Done | Security | Regression tests for poisoned magnets and TUI injection |
 | ✅ Done | Security | CycloneDX SBOM attached to GitHub Releases |
 | ✅ Done | Release | v1.7.0 published — [GitHub Release](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.0) + GHCR `:v1.7.0` / `:latest` |
+| ✅ Done | Release | v1.7.1 — NAS `TORZLINK_DOWNLOADS_HOST` + PUID/PGID + deploy-from-dev fixes |
 | ✅ Done | Docs | Agent workflow — [docs/agent-workflow.md](docs/agent-workflow.md) + `npm run pre-release` |
 | ✅ Done | Product | Web UI + API (`torzlink serve`) — search + download queue |
 | ✅ Done | Ops | NAS deploy — Traefik v3, `TORZLINK_NETWORK_MODE=direct\|vpn`, `tools/deploy-nas.sh` |
@@ -418,7 +455,7 @@ kanban
 
 **Priorities:** 🔜 Next = pick up here ([docs/next-session.md](docs/next-session.md)) · 📋 Planned = broader roadmap · 📋 P2 = quality/maintainability · Security P0/P1 complete as of **v1.6.0**.
 
-**Current release:** [v1.7.0](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.0) — web UI + NAS/Traefik deploy.
+**Current release:** [v1.7.1](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.1) — NAS downloads path/ownership + deploy hardening.
 
 ### Cut a release
 
