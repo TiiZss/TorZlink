@@ -283,6 +283,64 @@ describe("HTTP API", () => {
     }
   });
 
+  it("downloads to a per-item dir (relative under downloadDir)", async () => {
+    const runtime = await createTorzlinkRuntime();
+    try {
+      const handler: http.RequestListener = (req, res) => {
+        void handleRequest(req, res, runtime, publicDir);
+      };
+      const hash = "fedcba9876543210fedcba9876543210fedcba98";
+      const add = await request(
+        handler,
+        "POST",
+        "/api/downloads",
+        JSON.stringify({ input: hash, dir: "movies" }),
+      );
+      expect(add.status).toBe(201);
+      const expectedDir = path.join(runtime.config.downloadDir, "movies");
+      expect(add.json).toMatchObject({ ok: true, id: hash, dir: expectedDir });
+      const list = await request(handler, "GET", "/api/downloads");
+      expect((list.json as { items: { id: string; dir: string }[] }).items[0]).toMatchObject({
+        id: hash,
+        dir: expectedDir,
+      });
+      await request(handler, "POST", `/api/downloads/${hash}/cancel`, "{}");
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it("rejects per-item dir outside locked TORZLINK_DOWNLOAD_DIR", async () => {
+    process.env.TORZLINK_DOWNLOAD_DIR = path.join(stateDir, "downloads");
+    const runtime = await createTorzlinkRuntime();
+    try {
+      const handler: http.RequestListener = (req, res) => {
+        void handleRequest(req, res, runtime, publicDir);
+      };
+      const hash = "11223344556677889900aabbccddeeff11223344";
+      const outside = path.join(stateDir, "outside");
+      const denied = await request(
+        handler,
+        "POST",
+        "/api/downloads",
+        JSON.stringify({ input: hash, dir: outside }),
+      );
+      expect(denied.status).toBe(403);
+      const ok = await request(
+        handler,
+        "POST",
+        "/api/downloads",
+        JSON.stringify({ input: hash, dir: "sub" }),
+      );
+      expect(ok.status).toBe(201);
+      expect((ok.json as { dir: string }).dir).toBe(path.join(runtime.config.downloadDir, "sub"));
+      await request(handler, "POST", `/api/downloads/${hash}/cancel`, "{}");
+    } finally {
+      runtime.dispose();
+      delete process.env.TORZLINK_DOWNLOAD_DIR;
+    }
+  });
+
   it("requires Bearer when TORZLINK_SERVE_TOKEN is set", async () => {
     process.env.TORZLINK_SERVE_TOKEN = "test-secret-token";
     const runtime = await createTorzlinkRuntime();
