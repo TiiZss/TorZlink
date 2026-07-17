@@ -592,11 +592,17 @@ async function handleHistoryRedownload(
     });
     return true;
   }
-  const dir = item.dir || runtime.config.downloadDir;
-  await fs.mkdir(dir, { recursive: true }).catch(() => {});
-  runtime.queue.add(safe, dir);
+  const resolved = await resolvePerItemDownloadDir(
+    item.dir || runtime.config.downloadDir,
+    runtime.config.downloadDir,
+  );
+  if (!resolved.ok) {
+    sendJson(res, resolved.status, resolved.body);
+    return true;
+  }
+  runtime.queue.add(safe, resolved.value);
   runtime.queue.emit("web-added", safe);
-  sendJson(res, 201, { ok: true, id: safe.id });
+  sendJson(res, 201, { ok: true, id: safe.id, dir: resolved.value });
   return true;
 }
 

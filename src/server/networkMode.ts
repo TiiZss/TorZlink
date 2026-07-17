@@ -75,8 +75,13 @@ function switchCmdConfigured(): boolean {
 /**
  * Start the host/container switch helper without waiting for recreate.
  * Waiting would kill the HTTP response when this process is the one being replaced.
+ * Passes TORZLINK_PREV_NETWORK_MODE so the helper can roll back after the server
+ * (or a prior run) already patched .env to the target mode.
  */
-function startSwitchCmd(mode: NetworkMode): Promise<{ ok: boolean; detail?: string }> {
+function startSwitchCmd(
+  mode: NetworkMode,
+  prevMode: NetworkMode,
+): Promise<{ ok: boolean; detail?: string }> {
   const cmd = process.env.TORZLINK_NETWORK_SWITCH_CMD?.trim();
   if (!cmd) return Promise.resolve({ ok: false });
 
@@ -88,7 +93,7 @@ function startSwitchCmd(mode: NetworkMode): Promise<{ ok: boolean; detail?: stri
       const baseArgs = parts.slice(1);
       const child = spawn(file, [...baseArgs, mode], {
         shell: false,
-        env: process.env,
+        env: { ...process.env, TORZLINK_PREV_NETWORK_MODE: prevMode },
         detached: true,
         stdio: "ignore",
       });
@@ -104,8 +109,21 @@ function startSwitchCmd(mode: NetworkMode): Promise<{ ok: boolean; detail?: stri
         resolve(result);
       };
       child.on("error", (err) => done({ ok: false, detail: err.message }));
-      // Catch immediate spawn failures; do not wait for recreate exit.
-      setTimeout(() => done({ ok: true }), 250);
+      child.on("exit", (code, signal) => {
+        if (code === 0 || code === null) return;
+        done({
+          ok: false,
+          detail: signal ? `killed by ${signal}` : `exited ${code}`,
+        });
+      });
+      // Catch immediate spawn / early exit failures; do not wait for recreate.
+      setTimeout(() => {
+        if (typeof child.exitCode === "number" && child.exitCode !== 0) {
+          done({ ok: false, detail: `exited ${child.exitCode}` });
+          return;
+        }
+        done({ ok: true });
+      }, 250);
     } catch (err) {
       resolve({ ok: false, detail: err instanceof Error ? err.message : String(err) });
     }
@@ -152,12 +170,13 @@ export async function getNetworkStatus(): Promise<NetworkStatus> {
 }
 
 export async function setNetworkMode(mode: NetworkMode): Promise<NetworkStatus> {
+  const prevRuntime = runtimeNetworkMode();
   await writeDesiredMode(mode);
 
   const envFile = process.env.TORZLINK_DEPLOY_ENV_FILE?.trim();
   const envPatched = envFile ? await patchEnvFile(envFile, mode) : false;
 
-  const switched = await startSwitchCmd(mode);
+  const switched = await startSwitchCmd(mode, prevRuntime);
   const runtime = runtimeNetworkMode();
   const switchable = switchCmdConfigured();
   const applied = mode === runtime;

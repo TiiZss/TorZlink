@@ -71,6 +71,19 @@ cmd_install() {
     info "copied compose → ${DEPLOY_DIR}/docker-compose.nas.yml"
   fi
   load_env
+  local abs_deploy
+  abs_deploy="$(cd "${DEPLOY_DIR}" && pwd)"
+  if grep -qE '^[[:space:]]*TORZLINK_DEPLOY_HOST_PATH=' "${ENV_FILE}"; then
+    local tmp
+    tmp="$(mktemp)"
+    sed -E "s|^[[:space:]]*TORZLINK_DEPLOY_HOST_PATH=.*|TORZLINK_DEPLOY_HOST_PATH=${abs_deploy}|" "${ENV_FILE}" >"${tmp}"
+    mv "${tmp}" "${ENV_FILE}"
+  else
+    printf '\nTORZLINK_DEPLOY_HOST_PATH=%s\n' "${abs_deploy}" >>"${ENV_FILE}"
+  fi
+  chmod 600 "${ENV_FILE}" || true
+  export TORZLINK_DEPLOY_HOST_PATH="${abs_deploy}"
+  info "TORZLINK_DEPLOY_HOST_PATH=${abs_deploy} (VPN switch handoff mount)"
   if [[ -z "${TORZLINK_SERVE_TOKEN:-}" ]]; then
     local token
     token="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 32)"

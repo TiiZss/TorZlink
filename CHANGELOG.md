@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Runtime image includes `docker-cli` / `docker-cli-compose` for the NAS network switch path
 - **Web `.torrent` upload** — `POST /api/torrent` (max 2MB) parses bytes → magnet → same queue as TUI; file input in the queue panel
 - **Web “download to…”** — optional `dir` on `POST /api/downloads` (and `?dir=` on `POST /api/torrent`); UI button “A carpeta…”; when `TORZLINK_DOWNLOAD_DIR` is set, only subdirs of that root are allowed
+- **VPN switch rollback** — pass `TORZLINK_PREV_NETWORK_MODE` so restore uses the pre-switch runtime after `.env` was already patched
+- **`deploy-nas.sh install`** — writes `TORZLINK_DEPLOY_HOST_PATH` to the absolute deploy dir (required for in-UI VPN handoff)
 
 ### Changed
 
