@@ -74,7 +74,8 @@
     "ink": "^7.0.5",
     "parse-torrent": "^11.0.21",
     "react": "^19.2.7",
-    "webtorrent": "^2.4.1"
+    "webtorrent": "^2.4.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.9.2",

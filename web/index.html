@@ -49,6 +49,16 @@
         </div>
         <p class="tagline"><span class="prompt">❯</span> busca y descarga torrents</p>
         <p id="net-status" class="net-status" hidden></p>
+        <details class="help-panel">
+          <summary>ayuda</summary>
+          <ul>
+            <li><strong>search</strong> — categorías + orden; Enter añade a la cola</li>
+            <li><strong>magnet / .torrent</strong> — pegar URI o subir archivo; “A carpeta…” elige subcarpeta</li>
+            <li><strong>queue / history / seeding</strong> — pause, resume, cancel, redownload</li>
+            <li><strong>VPN</strong> — solo NAS con Gluetun + token; recrea el contenedor</li>
+            <li><strong>auth</strong> — si pide token, usa <code>TORZLINK_SERVE_TOKEN</code> (Bearer)</li>
+          </ul>
+        </details>
       </header>
 
       <section id="auth-gate" class="panel" hidden>
@@ -196,6 +206,10 @@
                   spellcheck="false"
                   placeholder="udp://… https://… (espacio o coma)"
                 ></textarea>
+              </label>
+              <label class="config-field config-check">
+                <input id="config-seed-on-complete" name="seedOnComplete" type="checkbox" checked />
+                <span>seed al completar descarga</span>
               </label>
               <div class="row config-actions">
                 <button type="submit">Guardar</button>

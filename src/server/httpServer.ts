@@ -3,7 +3,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { saveConfig } from "../config/config";
-import { envVar } from "../config/env-vars";
+import { downloadDirLockedByEnv, downloadJailRoot, pathUnderJail } from "../config/downloadJail";
 import { normalizeDownloadDir } from "../config/folder";
 import { parseTrackers, unknownTrackerHosts } from "../config/trackers";
 import type { TorzlinkRuntime } from "../core/runtime";
@@ -14,6 +14,7 @@ import type { SourceId } from "../sources/types";
 import { lastClipboardFile, writeClipboard } from "../util/clipboard";
 import { authorizeApi, serveToken } from "./auth";
 import { getNetworkStatus, parseNetworkMode, setNetworkMode } from "./networkMode";
+import { checkRateLimit } from "./rateLimit";
 import { parseSearchSort, searchAll } from "./searchAll";
 import { magnetFromTorrentBytes } from "../sources/torrentFile";
 
@@ -236,34 +237,38 @@ async function ensureDownloadDirUnderRoot(
     return { ok: false, status: 400, body: { error: "couldn't use dir" } };
   }
 
-  if (!downloadDirLockedByEnv()) {
+  const jail = downloadJailRoot() ?? (downloadDirLockedByEnv() ? path.resolve(defaultDir) : null);
+  if (!jail) {
     return { ok: true, value: dir };
   }
 
   // Prefix check first (cheap); then realpath so symlinks under the jail cannot
   // escape to the host (shared NAS download trees).
-  const root = path.resolve(defaultDir);
-  const resolved = path.resolve(dir);
-  const underRoot = resolved === root || resolved.startsWith(root + path.sep);
-  if (!underRoot) {
+  if (!pathUnderJail(dir, jail)) {
     return {
       ok: false,
       status: 403,
-      body: { error: "dir must be under TORZLINK_DOWNLOAD_DIR" },
+      body: {
+        error: downloadDirLockedByEnv()
+          ? "dir must be under TORZLINK_DOWNLOAD_DIR"
+          : "dir must be under TORZLINK_DOWNLOAD_ROOT",
+      },
     };
   }
 
   try {
-    await fs.mkdir(root, { recursive: true });
-    const rootReal = await fs.realpath(root);
+    await fs.mkdir(jail, { recursive: true });
+    const rootReal = await fs.realpath(jail);
     const dirReal = await fs.realpath(dir);
-    const underReal =
-      dirReal === rootReal || dirReal.startsWith(rootReal + path.sep);
-    if (!underReal) {
+    if (!pathUnderJail(dirReal, rootReal)) {
       return {
         ok: false,
         status: 403,
-        body: { error: "dir must be under TORZLINK_DOWNLOAD_DIR" },
+        body: {
+          error: downloadDirLockedByEnv()
+            ? "dir must be under TORZLINK_DOWNLOAD_DIR"
+            : "dir must be under TORZLINK_DOWNLOAD_ROOT",
+        },
       };
     }
     return { ok: true, value: dirReal };
@@ -405,15 +410,13 @@ async function handlePostNetwork(req: IncomingMessage, res: ServerResponse): Pro
   sendJson(res, 200, { ok: true, ...(await setNetworkMode(mode)) });
 }
 
-function downloadDirLockedByEnv(): boolean {
-  return Boolean(envVar("TORZLINK_DOWNLOAD_DIR", "TORLINK_DOWNLOAD_DIR"));
-}
-
 function serializeConfig(runtime: TorzlinkRuntime) {
   return {
     downloadDir: runtime.config.downloadDir,
     trackers: runtime.config.trackers,
+    seedOnComplete: runtime.config.seedOnComplete,
     downloadDirLocked: downloadDirLockedByEnv(),
+    downloadRoot: downloadJailRoot(),
     unknownTrackerHosts: unknownTrackerHosts(runtime.config.trackers),
   };
 }
@@ -457,8 +460,28 @@ async function resolvePatchDownloadDir(
       },
     };
   }
+  const jail = downloadJailRoot();
+  if (jail && !pathUnderJail(dir, jail)) {
+    return {
+      ok: false,
+      status: 403,
+      body: { error: "downloadDir must be under TORZLINK_DOWNLOAD_ROOT" },
+    };
+  }
   try {
     await fs.mkdir(dir, { recursive: true });
+    if (jail) {
+      const rootReal = await fs.realpath(jail);
+      const dirReal = await fs.realpath(dir);
+      if (!pathUnderJail(dirReal, rootReal)) {
+        return {
+          ok: false,
+          status: 403,
+          body: { error: "downloadDir must be under TORZLINK_DOWNLOAD_ROOT" },
+        };
+      }
+      return { ok: true, value: dirReal };
+    }
   } catch {
     return { ok: false, status: 400, body: { error: "couldn't use downloadDir" } };
   }
@@ -475,13 +498,15 @@ async function handlePatchConfig(
 
   const hasDownloadDir = Object.hasOwn(body, "downloadDir");
   const hasTrackers = Object.hasOwn(body, "trackers");
-  if (!hasDownloadDir && !hasTrackers) {
-    sendJson(res, 400, { error: "provide downloadDir and/or trackers" });
+  const hasSeed = Object.hasOwn(body, "seedOnComplete");
+  if (!hasDownloadDir && !hasTrackers && !hasSeed) {
+    sendJson(res, 400, { error: "provide downloadDir, trackers, and/or seedOnComplete" });
     return;
   }
 
   let nextDir = runtime.config.downloadDir;
   let nextTrackers = runtime.config.trackers;
+  let nextSeed = runtime.config.seedOnComplete;
 
   if (hasDownloadDir) {
     const resolved = await resolvePatchDownloadDir(body.downloadDir, runtime.config.downloadDir);
@@ -501,9 +526,19 @@ async function handlePatchConfig(
     nextTrackers = parsed;
   }
 
+  if (hasSeed) {
+    if (typeof body.seedOnComplete !== "boolean") {
+      sendJson(res, 400, { error: "seedOnComplete must be a boolean" });
+      return;
+    }
+    nextSeed = body.seedOnComplete;
+  }
+
   runtime.config.downloadDir = nextDir;
   runtime.config.trackers = nextTrackers;
+  runtime.config.seedOnComplete = nextSeed;
   runtime.queue.setTrackers(nextTrackers);
+  runtime.queue.setSeedOnComplete(nextSeed);
   await saveConfig(runtime.config);
 
   sendJson(res, 200, { ok: true, ...serializeConfig(runtime) });
@@ -740,6 +775,44 @@ async function handleApiPost(
   }
 }
 
+function clientRateKey(req: IncomingMessage): string {
+  const xf = req.headers["x-forwarded-for"];
+  const forwarded = typeof xf === "string" ? xf.split(",")[0]?.trim() : "";
+  return forwarded || req.socket.remoteAddress || "unknown";
+}
+
+function handleSseEvents(
+  req: IncomingMessage,
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+): void {
+  res.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform",
+    connection: "keep-alive",
+  });
+  res.write(": ok\n\n");
+  const send = (): void => {
+    const payload = JSON.stringify({
+      downloads: runtime.queue.getItems().map(serializeDownload),
+      seeds: runtime.queue.getSeeds().map(serializeSeed),
+    });
+    res.write(`event: update\ndata: ${payload}\n\n`);
+  };
+  send();
+  const onUpdate = (): void => send();
+  runtime.queue.on("update", onUpdate);
+  const heartbeat = setInterval(() => {
+    res.write(": ping\n\n");
+  }, 15_000);
+  const cleanup = (): void => {
+    clearInterval(heartbeat);
+    runtime.queue.off("update", onUpdate);
+  };
+  req.on("close", cleanup);
+  res.on("close", cleanup);
+}
+
 async function handleApiRoute(
   req: IncomingMessage,
   res: ServerResponse,
@@ -748,6 +821,16 @@ async function handleApiRoute(
   url: URL,
 ): Promise<boolean> {
   if (!requireApiAuth(req, res)) return true;
+
+  if (!checkRateLimit(clientRateKey(req))) {
+    sendJson(res, 429, { error: "rate limit exceeded" });
+    return true;
+  }
+
+  if (method === "GET" && url.pathname === "/api/events") {
+    handleSseEvents(req, res, runtime);
+    return true;
+  }
 
   if (method === "GET") return handleApiGet(res, runtime, url);
   if (method === "DELETE") return handleApiDelete(res, runtime, url.pathname);

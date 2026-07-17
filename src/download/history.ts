@@ -1,6 +1,7 @@
 import { promises as fs, mkdirSync, writeFileSync, renameSync } from "node:fs";
 import path from "node:path";
 import { historyFile } from "../config/paths";
+import { sanitizeDownloadInput } from "../sources/magnet";
 import { serializeWrites, writeJsonAtomic } from "../util/atomic";
 import type { SourceId } from "../sources/types";
 
@@ -38,6 +39,23 @@ function isHistoryItem(v: unknown): v is HistoryItem {
   return typeof r.id === "string" && typeof r.name === "string" && typeof r.magnet === "string";
 }
 
+function sanitizeHistoryItem(raw: HistoryItem): HistoryItem | null {
+  const safe = sanitizeDownloadInput({
+    id: raw.id,
+    name: raw.name,
+    magnet: raw.magnet,
+    source: raw.source,
+    sizeBytes: raw.sizeBytes,
+  });
+  if (!safe) return null;
+  return {
+    ...raw,
+    id: safe.id,
+    name: safe.name,
+    magnet: safe.magnet,
+  };
+}
+
 export async function loadHistory(): Promise<HistoryItem[]> {
   let raw: string;
   try {
@@ -47,7 +65,12 @@ export async function loadHistory(): Promise<HistoryItem[]> {
   }
   try {
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter(isHistoryItem).slice(0, HISTORY_CAP) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(isHistoryItem)
+      .map(sanitizeHistoryItem)
+      .filter((x): x is HistoryItem => x !== null)
+      .slice(0, HISTORY_CAP);
   } catch {
     return [];
   }

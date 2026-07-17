@@ -12,8 +12,10 @@ services:
 
     tty: true
 
+    # Optional — launchers create an empty .env when missing (Telegram only).
     env_file:
-      - ../../.env
+      - path: ../../.env
+        required: false
 
     environment:
 

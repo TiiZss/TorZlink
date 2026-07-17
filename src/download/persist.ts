@@ -1,6 +1,7 @@
 import { promises as fs, mkdirSync, writeFileSync, renameSync, existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import { queueFile, seedsFile, torrentsDir } from "../config/paths";
+import { sanitizeDownloadInput } from "../sources/magnet";
 import { serializeWrites, writeJsonAtomic } from "../util/atomic";
 import type { QueueItem } from "./types";
 
@@ -26,6 +27,18 @@ function isQueueItem(v: unknown): v is QueueItem {
   return typeof r.id === "string" && typeof r.magnet === "string";
 }
 
+function sanitizeQueueItem(raw: QueueItem): QueueItem | null {
+  const safe = sanitizeDownloadInput({
+    id: raw.id,
+    name: typeof raw.name === "string" ? raw.name : raw.id,
+    magnet: raw.magnet,
+    source: raw.source,
+    sizeBytes: typeof raw.totalBytes === "number" ? raw.totalBytes : undefined,
+  });
+  if (!safe) return null;
+  return { ...raw, id: safe.id, name: safe.name, magnet: safe.magnet };
+}
+
 export async function loadQueue(): Promise<QueueItem[]> {
   let raw: string;
   try {
@@ -35,7 +48,11 @@ export async function loadQueue(): Promise<QueueItem[]> {
   }
   try {
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter(isQueueItem) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(isQueueItem)
+      .map(sanitizeQueueItem)
+      .filter((x): x is QueueItem => x !== null);
   } catch {
     return [];
   }

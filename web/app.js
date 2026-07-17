@@ -45,6 +45,7 @@ const historyClearBtn = document.getElementById("history-clear");
 const configForm = document.getElementById("config-form");
 const configDownloadDir = document.getElementById("config-download-dir");
 const configTrackers = document.getElementById("config-trackers");
+const configSeedOnComplete = document.getElementById("config-seed-on-complete");
 const configStatus = document.getElementById("config-status");
 
 let currentNetMode = "direct";
@@ -146,6 +147,7 @@ async function refreshConfig() {
     configDownloadDir.value = data.downloadDir || "";
     configDownloadDirValue = data.downloadDir || "";
     configTrackers.value = Array.isArray(data.trackers) ? data.trackers.join("\n") : "";
+    if (configSeedOnComplete) configSeedOnComplete.checked = data.seedOnComplete !== false;
     configDirLocked = Boolean(data.downloadDirLocked);
     configDownloadDir.disabled = configDirLocked;
     configDownloadDir.title = configDirLocked
@@ -809,7 +811,10 @@ configForm?.addEventListener("submit", async (e) => {
   if (!configDownloadDir || !configTrackers) return;
   setConfigStatus("guardando…");
   try {
-    const body = { trackers: configTrackers.value };
+    const body = {
+      trackers: configTrackers.value,
+      seedOnComplete: configSeedOnComplete ? Boolean(configSeedOnComplete.checked) : true,
+    };
     if (!configDirLocked) body.downloadDir = configDownloadDir.value;
     const data = await api("/api/config", {
       method: "PATCH",
@@ -818,6 +823,7 @@ configForm?.addEventListener("submit", async (e) => {
     configDownloadDir.value = data.downloadDir || "";
     configDownloadDirValue = data.downloadDir || "";
     configTrackers.value = Array.isArray(data.trackers) ? data.trackers.join("\n") : "";
+    if (configSeedOnComplete) configSeedOnComplete.checked = data.seedOnComplete !== false;
     configDirLocked = Boolean(data.downloadDirLocked);
     configDownloadDir.disabled = configDirLocked;
     let msg = "config guardada";
@@ -831,6 +837,40 @@ configForm?.addEventListener("submit", async (e) => {
   }
 });
 
+function startLiveUpdates() {
+  const token = getToken();
+  const url = token
+    ? `/api/events?access_token=${encodeURIComponent(token)}`
+    : "/api/events";
+  // EventSource cannot set Authorization; fall back to poll when token is required.
+  if (token || typeof EventSource === "undefined") {
+    setInterval(() => {
+      if (activeLibTab === "queue") void refreshQueue();
+      else if (activeLibTab === "seeding") void refreshSeeds();
+    }, 1000);
+    return;
+  }
+  try {
+    const es = new EventSource(url);
+    es.addEventListener("update", () => {
+      if (activeLibTab === "queue") void refreshQueue();
+      else if (activeLibTab === "seeding") void refreshSeeds();
+    });
+    es.onerror = () => {
+      es.close();
+      setInterval(() => {
+        if (activeLibTab === "queue") void refreshQueue();
+        else if (activeLibTab === "seeding") void refreshSeeds();
+      }, 1000);
+    };
+  } catch {
+    setInterval(() => {
+      if (activeLibTab === "queue") void refreshQueue();
+      else if (activeLibTab === "seeding") void refreshSeeds();
+    }, 1000);
+  }
+}
+
 paintCategoryTabs();
 
 const ok = await bootAuth();
@@ -838,8 +878,5 @@ if (ok) {
   await refreshNetwork();
   await refreshConfig();
   await refreshLibrary();
-  setInterval(() => {
-    if (activeLibTab === "queue") void refreshQueue();
-    else if (activeLibTab === "seeding") void refreshSeeds();
-  }, 1000);
+  startLiveUpdates();
 }
