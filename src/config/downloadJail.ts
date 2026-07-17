@@ -1,3 +1,4 @@
+import { existsSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { envVar } from "./env-vars";
 
@@ -22,4 +23,20 @@ export function pathUnderJail(candidate: string, root: string): boolean {
   const resolved = path.resolve(candidate);
   const base = path.resolve(root);
   return resolved === base || resolved.startsWith(base + path.sep);
+}
+
+/** Sync check for restore/boot paths (no mkdir). */
+export function isDirInsideJailSync(dir: string): boolean {
+  const jail = downloadJailRoot();
+  if (!jail) return true;
+  if (typeof dir !== "string" || !dir.trim()) return false;
+  if (!pathUnderJail(dir, jail)) return false;
+  try {
+    if (existsSync(dir) && existsSync(jail)) {
+      return pathUnderJail(realpathSync(dir), realpathSync(jail));
+    }
+    return pathUnderJail(path.resolve(dir), path.resolve(jail));
+  } catch {
+    return false;
+  }
 }

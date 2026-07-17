@@ -1,6 +1,7 @@
 import { promises as fs, mkdirSync, writeFileSync, renameSync, existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import { queueFile, seedsFile, torrentsDir } from "../config/paths";
+import { isDirInsideJailSync } from "../config/downloadJail";
 import { sanitizeDownloadInput } from "../sources/magnet";
 import { serializeWrites, writeJsonAtomic } from "../util/atomic";
 import type { QueueItem } from "./types";
@@ -36,6 +37,9 @@ function sanitizeQueueItem(raw: QueueItem): QueueItem | null {
     sizeBytes: typeof raw.totalBytes === "number" ? raw.totalBytes : undefined,
   });
   if (!safe) return null;
+  if (typeof raw.dir === "string" && raw.dir && !isDirInsideJailSync(raw.dir)) {
+    return null;
+  }
   return { ...raw, id: safe.id, name: safe.name, magnet: safe.magnet };
 }
 
