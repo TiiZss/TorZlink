@@ -41,6 +41,8 @@ When the user request matches a row below, **read the skill file first** (`.agen
 
 Fix **Critical/High** findings from reviews before tagging. Document accepted risks in ADR or CHANGELOG.
 
+**Empty-diff trap:** After merge, `main` often has no uncommitted/branch delta vs itself. If review returns “no changes”, re-run against the **release commit range** (e.g. previous tag → `HEAD`) or the merged PR — do not treat a no-op review as a green security gate.
+
 ## 3. Release gate (before `git tag`)
 
 Run locally (or `npm run pre-release`):
@@ -99,9 +101,31 @@ On failure: run `ci-investigator`, fix, move tag only if release never succeeded
 
 1. Read `engineering-devops-automator` + `engineering-sre`
 2. `npm run pre-release`
-3. `review-bugbot` + `security-review`
+3. `review-bugbot` + `security-review` (see empty-diff trap above)
 4. Tag + push + §4 monitor
-5. Update `docs/next-session.md` + README project board
+5. Prefer GHCR image for smoke/deploy (§5b) before declaring done
+6. Update `docs/next-session.md` + README project board
+
+### 5b. Post-release smoke + NAS deploy
+
+1. Read `engineering-sre` + `engineering-devops-automator`
+2. Smoke the **published** image (not only a local rebuild):
+
+   ```powershell
+   .\tools\smoke-serve.ps1
+   # or: .\tools\smoke-serve.ps1 -Image ghcr.io/tiizss/torzlink:vX.Y.Z
+   ```
+
+3. Deploy exact release digest to NAS (faster + bit-identical to GHCR):
+
+   ```powershell
+   docker pull ghcr.io/tiizss/torzlink:vX.Y.Z
+   docker tag ghcr.io/tiizss/torzlink:vX.Y.Z torzlink:vX.Y.Z
+   .\tools\deploy-from-dev.ps1 -SkipBuild -ImageTag vX.Y.Z
+   ```
+
+4. Verify NAS via Traefik: `http://torzlink.lan/health` → `{"ok":true,…}`.  
+   Do **not** assume `curl 127.0.0.1:8787` on the NAS host works (port often only on the proxy network).
 
 ### Docker / CI session
 
@@ -116,6 +140,14 @@ On failure: run `ci-investigator`, fix, move tag only if release never succeeded
 2. Vitest tests under `tests/integrations/`
 3. Never log tokens; keep `.env.example` placeholders commented
 
+### Session close (*cerrar sesión*)
+
+1. Confirm alignment table: `main` tag = `package.json` = GHCR tag = NAS `TORZLINK_IMAGE` (when deploy was in scope)
+2. Latest CI + Release workflows **success**
+3. Update [docs/next-session.md](next-session.md) gates + P3 backlog
+4. Refresh README mermaid kanban (move shipped items to Done)
+5. Persist any workflow friction as checklist bullets here (do not leave them only in chat)
+
 ## 6. Detecting “this could use a skill”
 
 Trigger skill routing (§1) when the user mentions or implies:
@@ -126,12 +158,26 @@ Trigger skill routing (§1) when the user mentions or implies:
 - *Telegram, API, notify, integración*
 - *review, PR, merge, CI rojo*
 - *smoke, SRE, observabilidad*
+- *deploy, NAS, Traefik, gluetun*
+- *cerrar sesión, wrap-up, alinear*
 
 When detected: name the skill, follow its checklist, then implement.
 
-## 7. References
+## 7. Smoke API contract (Windows agents)
+
+When writing ad-hoc PowerShell against `serve`:
+
+| Do | Don't |
+| --- | --- |
+| `GET /api/downloads` → parse `.items` | Expect `.downloads` or a bare array |
+| Add with `{ "input": "<magnet\|infohash>" }` | Invent undocumented body fields only |
+| Cancel with `POST /api/downloads/:id/cancel` + `{}` | `DELETE /api/downloads/:id` |
+| Prefer `.\tools\smoke-serve.ps1` | Probe `/api/events` with `Invoke-WebRequest` (SSE hangs) |
+
+## 8. References
 
 - [docs/next-session.md](next-session.md) — product backlog
+- [docs/smoke-docker-windows.md](smoke-docker-windows.md) — Docker smoke (TUI + serve script)
 - [docs/follow-ups-launchers.md](follow-ups-launchers.md) — launcher sync
 - [docs/adr/001-trust-model.md](adr/001-trust-model.md) — trust boundaries
 - [CONTRIBUTING.md](../CONTRIBUTING.md) — human contributor bar

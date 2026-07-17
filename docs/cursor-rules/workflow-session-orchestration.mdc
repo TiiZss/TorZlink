@@ -33,6 +33,17 @@ Fix Critical/High findings before tagging.
 - `Dockerfile` + `npm ci` → `package-lock.json` must NOT be in `.dockerignore`
 - SBOM: `npm sbom ... > sbom.cdx.json` (no `-o` flag)
 - After tag push: `gh run watch` on `release.yml`; on failure use `ci-investigator`
+- Reviews: if `Diff: branch changes` is empty on clean `main`, review last PR / tag…HEAD instead
+
+## Post-release / deploy
+
+- Smoke published image: `.\tools\smoke-serve.ps1` (not ad-hoc SSE / wrong JSON fields)
+- NAS: `docker tag ghcr.io/tiizss/torzlink:vX.Y.Z torzlink:vX.Y.Z` then `deploy-from-dev.ps1 -SkipBuild`
+- Verify `http://torzlink.lan/health` (not host loopback unless port is published)
+
+## Session close
+
+When user says *cerrar sesión*: update `docs/next-session.md`, README kanban, confirm main/tag/GHCR/NAS alignment.
 
 ## Loop
 
@@ -40,4 +51,4 @@ After pushing a version tag, prefer `/loop 30s` (loop skill) or `gh run watch` u
 
 ## Trigger phrases
 
-Auto-apply §1–§3 when user says: release, tag, v1., GitHub, cerrar sesión, seguridad, Docker, CI, Telegram, review, PR, smoke.
+Auto-apply §1–§3 when user says: release, tag, v1., GitHub, cerrar sesión, seguridad, Docker, CI, Telegram, review, PR, smoke, deploy, NAS.

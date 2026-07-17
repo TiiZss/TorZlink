@@ -419,28 +419,20 @@ kanban
     Agent workflow docs pre-release gate skill routing
     Web UI torzlink serve search plus queue API
     NAS deploy Traefik direct vpn switch deploy-nas.sh
+    Tag v1.8.0 jail VPN switch SSE Zod rate-limit release harden
+    smoke-serve.ps1 GHCR smoke plus NAS deploy SkipBuild
   column Next session
-    Web UI feature parity clone of TUI
-    Categories History Seeding Copy config trackers
-    NAS redeploy smoke VPN toggle
-    Web parity download-to torrent upload
-    Manual interactive download test in Docker TUI
-    Windows-specific Docker volume docs
-    Zod schema validation for config.json
-    Scraper anti-corruption rebuild magnet from infoHash
+    Sidecar VPN switch without Docker socket in BT container
+    Authelia Traefik auth recipe
+    Web UI feature parity polish
+    Pin Actions Node 20 deprecation warnings
     See docs/next-session.md
   column Planned
     Sync selective upstream fixes from baairon/torlink
   column Quality P2
-    Zod schema validation for config.json
-    Scraper anti-corruption rebuild magnet from infoHash
-    Optional TORZLINK_DOWNLOAD_ROOT path jail
-    Structured logging TORZLINK_LOG with redaction
-    Global no-seed-by-default config option
     Source health cache TTL tuning
   column Follow-ups
     Code review launchers torzlink.ps1 sh cmd
-    Launcher PR hygiene separate from .agents
     Docker Desktop PATH WSL2 docs if needed
     See docs/follow-ups-launchers.md
 ```
@@ -452,7 +444,7 @@ kanban
 | ✅ Done | Docker | Env-based paths and clipboard for headless |
 | ✅ Done | Runtime | WebTorrent NAT/UTP hardening in containers |
 | ✅ Done | CI | Matrix Linux / macOS / Windows + Docker build + launcher smoke |
-| ✅ Done | Release | Workflow (`.github/workflows/release.yml`) + **v1.7.1** |
+| ✅ Done | Release | Workflow (`.github/workflows/release.yml`) + **v1.8.0** |
 | ✅ Done | Docs | Changelog, troubleshooting, upstream diff, security roadmap |
 | ✅ Done | UX | Root launchers, TorZlink branding, truecolor in Docker |
 | ✅ Done | Telegram | `.magnet` attachments on copy/start; completion summary without magnet URI |
@@ -468,6 +460,7 @@ kanban
 | ✅ Done | Security | CycloneDX SBOM attached to GitHub Releases |
 | ✅ Done | Release | v1.7.0 published — [GitHub Release](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.0) + GHCR `:v1.7.0` / `:latest` |
 | ✅ Done | Release | v1.7.1 — NAS `TORZLINK_DOWNLOADS_HOST` + PUID/PGID + deploy-from-dev fixes |
+| ✅ Done | Release | v1.8.0 — web launcher, VPN switch, jail/SSE/Zod, smoke-serve + NAS deploy |
 | ✅ Done | Docs | Agent workflow — [docs/agent-workflow.md](docs/agent-workflow.md) + `npm run pre-release` |
 | ✅ Done | Product | Web UI + API (`torzlink serve`) — search + download queue (MVP) |
 | ✅ Done | Ops | NAS deploy — Traefik v3, `TORZLINK_NETWORK_MODE=direct\|vpn`, `tools/deploy-nas.sh` |
