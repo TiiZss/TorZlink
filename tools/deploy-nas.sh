@@ -71,6 +71,21 @@ cmd_install() {
     info "copied compose → ${DEPLOY_DIR}/docker-compose.nas.yml"
   fi
   load_env
+  if [[ -z "${TORZLINK_SERVE_TOKEN:-}" ]]; then
+    local token
+    token="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 32)"
+    if grep -qE '^[[:space:]]*TORZLINK_SERVE_TOKEN=' "${ENV_FILE}"; then
+      local tmp
+      tmp="$(mktemp)"
+      sed -E "s/^[[:space:]]*TORZLINK_SERVE_TOKEN=.*/TORZLINK_SERVE_TOKEN=${token}/" "${ENV_FILE}" >"${tmp}"
+      mv "${tmp}" "${ENV_FILE}"
+    else
+      printf '\nTORZLINK_SERVE_TOKEN=%s\n' "${token}" >>"${ENV_FILE}"
+    fi
+    chmod 600 "${ENV_FILE}" || true
+    export TORZLINK_SERVE_TOKEN="${token}"
+    info "generated TORZLINK_SERVE_TOKEN (required for VPN switch / API admin)"
+  fi
   local data_dir="${DOCKER_CONFIG_ROOT:-/volume2/Docker_Configs}/torzlink"
   local dl_dir="${TORZLINK_DOWNLOADS_HOST:-${MEDIA_ROOT:-/volume1/data}/media/descargas/torrents}"
   local puid="${PUID:-1000}"
@@ -97,6 +112,8 @@ cmd_up() {
   need_cmd docker
   [[ -f "${ENV_FILE}" ]] || die "missing ${ENV_FILE} — run: $(basename "$0") install"
   load_env
+  [[ -n "${TORZLINK_SERVE_TOKEN:-}" ]] \
+    || die "TORZLINK_SERVE_TOKEN is required (re-run install or set it in .env)"
   local profile
   profile="$(mode_profile)"
   if [[ "${profile}" == "direct" ]]; then

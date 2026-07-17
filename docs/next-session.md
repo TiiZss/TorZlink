@@ -17,7 +17,7 @@ Session wrap-up **2026-07-16**: VPN ON/OFF sin redeploy desplegado en NAS (`swit
 | 5 | **Seeding** (lista, pause/stop seed) | OK | `GET /api/seeds` + pause/resume/toggle; pestaña Seeding |
 | 6 | Copiar magnet / guardar `.magnet` | OK | `POST /api/copy-magnet` + botón Copiar (clipboard + Telegram) |
 | 7 | Pegar magnet (clipboard / input) | Parcial | Input magnet OK; clipboard del host es distinto en browser |
-| 8 | Abrir `.torrent` | Falta | Upload / path API |
+| 8 | Abrir `.torrent` | OK | `POST /api/torrent` (bytes) + file input en web |
 | 9 | Config: carpeta de descarga global | OK | `GET/PATCH /api/config` + panel Config; bloqueada si `TORZLINK_DOWNLOAD_DIR` |
 | 10 | Config: trackers custom (+ warning hosts) | OK | Misma validación TUI (`parseTrackers` / `unknownTrackerHosts`) |
 | 11 | Categorías / filtros de fuentes (sidebar) | OK | Tabs All/Games/Movies/TV/Anime (`src/sources/categories.ts`) |
@@ -25,13 +25,13 @@ Session wrap-up **2026-07-16**: VPN ON/OFF sin redeploy desplegado en NAS (`swit
 | 13 | Help / keymap contextual | N/A web | Sustituir por ayuda corta en UI (no clonar atajos Ink) |
 | 14 | Splash / branding | Parcial | Look retro alineado; splash TUI no obligatorio |
 | 15 | Notificaciones Telegram (copy/start/complete/error) | Parcial | Copy vía API; start/complete/error vía runtime serve |
-| 16 | Modo red **direct** ↔ **vpn** (NAS) | OK (código) | Toggle + `SWITCH_CMD` + socket; falta smoke en NAS tras redeploy |
+| 16 | Modo red **direct** ↔ **vpn** (NAS) | OK | Toggle + switch sibling; token obligatorio con SWITCH_CMD |
 
 **Regla de trabajo:** cada PR de producto web debe avanzar al menos una fila “Falta” → “Parcial/OK” y compartir lógica con el core (no reimplementar scrapers/queue en el front).
 
 ## Ops invariant — VPN ON/OFF sin redeploy
 
-**Estado: implementado en código** (pendiente validar en NAS con `deploy-from-dev`).
+**Estado: implementado y verificado en NAS.** Token obligatorio si hay `SWITCH_CMD`; `deploy-nas.sh install` genera token.
 
 - Compose NAS monta Docker socket + `tools/torzlink-network-switch.sh` vía `TORZLINK_NETWORK_SWITCH_CMD`
 - `POST /api/network` persiste preferencia, parchea `.env`, arranca el switch en **detached** y la UI hace polling hasta `runtime === desired`
@@ -43,7 +43,7 @@ Session wrap-up **2026-07-16**: VPN ON/OFF sin redeploy desplegado en NAS (`swit
 | Priority | Area | Item | Notes |
 | --- | --- | --- | --- |
 | 1 | Ops | Traefik labels on Gluetun (vpn UI) | Switch aplica `network_mode:container:gluetun`; sin labels en Gluetun, `torzlink.lan` no responde en VPN |
-| 2 | Product | Web remaining parity | download-to…, upload `.torrent` (config downloadDir/trackers OK) |
+| 2 | Product | Web remaining parity | download-to… (`.torrent` upload OK) |
 | 3 | QA | Manual TUI download smoke test in Docker (Windows host) | Validate end-to-end on the primary dev machine |
 | 4 | Docs | Windows-specific Docker volume docs | `%cd%`, WSL2, Desktop bind-mount quirks |
 | 5 | Quality P2 | Zod schema for `config.json` | `downloadDir`, `trackers[]` validation at load |

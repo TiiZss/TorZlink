@@ -29,6 +29,8 @@ const seedsEl = document.getElementById("seeds");
 const searchStatus = document.getElementById("search-status");
 const searchForm = document.getElementById("search-form");
 const magnetForm = document.getElementById("magnet-form");
+const torrentForm = document.getElementById("torrent-form");
+const torrentFileInput = document.getElementById("torrent-file");
 const authGate = document.getElementById("auth-gate");
 const authForm = document.getElementById("auth-form");
 const mainLayout = document.getElementById("main");
@@ -274,6 +276,7 @@ function paintNetSwitch(vpn) {
 
 let netPollTimer = null;
 let netPollAttempts = 0;
+let netSwitchBusy = false;
 
 function stopNetPoll() {
   if (netPollTimer) {
@@ -307,7 +310,7 @@ function paintNetwork(status) {
   paintNetSwitch(mode === "vpn");
   paintNetStatus(status);
   if (netSwitch) {
-    netSwitch.disabled = Boolean(status.pending);
+    netSwitch.disabled = netSwitchBusy || Boolean(status.pending);
   }
 }
 
@@ -324,19 +327,30 @@ async function refreshNetwork() {
 
 function startNetPoll() {
   stopNetPoll();
+  netSwitchBusy = true;
+  if (netSwitch) netSwitch.disabled = true;
   netPollTimer = setInterval(() => {
     netPollAttempts += 1;
     void (async () => {
       const status = await refreshNetwork();
       if (status?.applied || netPollAttempts >= 30) {
         stopNetPoll();
-        if (status?.applied && netSwitch) netSwitch.disabled = false;
+        netSwitchBusy = false;
+        if (netSwitch) netSwitch.disabled = false;
+        if (status && !status.applied && netStatusEl) {
+          netStatusEl.hidden = false;
+          netStatusEl.textContent =
+            status.hint ||
+            `❯ timeout — runtime ${status.runtime}, preferencia ${status.desired}. Reintenta.`;
+          netStatusEl.classList.remove("ok");
+        }
       }
     })();
   }, 2000);
 }
 
 async function setNetworkMode(mode) {
+  netSwitchBusy = true;
   if (netSwitch) netSwitch.disabled = true;
   try {
     const status = await api("/api/network", {
@@ -346,8 +360,12 @@ async function setNetworkMode(mode) {
     paintNetwork(status);
     if (status.pending || (status.switchable && !status.applied)) {
       startNetPoll();
+    } else {
+      netSwitchBusy = false;
+      if (netSwitch) netSwitch.disabled = false;
     }
   } catch (err) {
+    netSwitchBusy = false;
     paintNetwork({ desired: currentNetMode, runtime: currentNetMode, applied: true });
     if (netStatusEl) {
       netStatusEl.hidden = false;
@@ -478,6 +496,38 @@ magnetForm.addEventListener("submit", async (e) => {
     await refreshQueue();
   } catch (err) {
     alert(err.message || "Magnet inválido");
+  }
+});
+
+torrentForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = torrentFileInput?.files?.[0];
+  if (!file) {
+    alert("Elige un archivo .torrent");
+    return;
+  }
+  try {
+    const headers = {};
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    headers["content-type"] = "application/x-bittorrent";
+    const res = await fetch("/api/torrent", {
+      method: "POST",
+      headers,
+      body: file,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      setToken("");
+      showAuth(true);
+      throw new Error("Token requerido o inválido");
+    }
+    if (!res.ok) throw new Error(data.error || res.statusText || "upload failed");
+    torrentForm.reset();
+    setLibTab("queue");
+    await refreshQueue();
+  } catch (err) {
+    alert(err.message || "Torrent inválido");
   }
 });
 

@@ -87,7 +87,11 @@ describe("networkMode", () => {
     );
     const child = vi.mocked(spawn).mock.results[0]?.value as { unref: ReturnType<typeof vi.fn> };
     expect(child.unref).toHaveBeenCalled();
-  });
+
+    const get = await getNetworkStatus();
+    expect(get.pending).toBe(false);
+    expect(get.applied).toBe(false);
+  }, 10_000);
 
   it("reports applied when desired matches runtime", async () => {
     process.env.TORZLINK_NETWORK_MODE = "vpn";

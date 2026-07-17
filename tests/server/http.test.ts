@@ -12,7 +12,8 @@ function request(
   handler: http.RequestListener,
   method: string,
   urlPath: string,
-  body?: string,
+  body?: string | Buffer,
+  contentType = "application/json",
 ): Promise<{ status: number; json: unknown; text: string }> {
   return new Promise((resolve, reject) => {
     const server = http.createServer(handler);
@@ -29,7 +30,7 @@ function request(
           path: urlPath,
           method,
           headers: body
-            ? { "content-type": "application/json", "content-length": Buffer.byteLength(body) }
+            ? { "content-type": contentType, "content-length": Buffer.byteLength(body) }
             : undefined,
         },
         (res) => {
@@ -177,6 +178,67 @@ describe("HTTP API", () => {
         JSON.stringify({ input: "not-a-magnet" }),
       );
       expect(res.status).toBe(400);
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it("rejects invalid and oversized torrent uploads", async () => {
+    const runtime = await createTorzlinkRuntime();
+    try {
+      const handler: http.RequestListener = (req, res) => {
+        void handleRequest(req, res, runtime, publicDir);
+      };
+      const bad = await request(
+        handler,
+        "POST",
+        "/api/torrent",
+        Buffer.from("not-a-torrent"),
+        "application/x-bittorrent",
+      );
+      expect(bad.status).toBe(400);
+
+      const huge = await request(
+        handler,
+        "POST",
+        "/api/torrent",
+        Buffer.alloc(2 * 1024 * 1024 + 1, 1),
+        "application/x-bittorrent",
+      );
+      expect(huge.status).toBe(413);
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it("uploads a valid .torrent into the queue", async () => {
+    const runtime = await createTorzlinkRuntime();
+    try {
+      const handler: http.RequestListener = (req, res) => {
+        void handleRequest(req, res, runtime, publicDir);
+      };
+      // Minimal bencoded torrent (parse-torrent compatible).
+      const torrent = Buffer.from(
+        "ZDg6YW5ub3VuY2U0MDpodHRwOi8vdHJhY2tlci5leGFtcGxlLmNvbTo4MDgwL2Fubm91bmNlNDppbmZvZDY6bGVuZ3RoaTFlNDpuYW1lNDp0ZXN0MTI6cGllY2UgbGVuZ3RoaTE2Mzg0ZTY6cGllY2VzMjA6YWFhYWFhYWFhYWFhYWFhYWFhYWFlZQ==",
+        "base64",
+      );
+      const add = await request(
+        handler,
+        "POST",
+        "/api/torrent",
+        torrent,
+        "application/x-bittorrent",
+      );
+      expect(add.status).toBe(201);
+      expect(add.json).toMatchObject({
+        ok: true,
+        id: "5593f95e1450b5791b9904e52c7ce511ea92e105",
+        name: "test",
+      });
+      const list = await request(handler, "GET", "/api/downloads");
+      expect(list.json).toMatchObject({
+        items: [expect.objectContaining({ id: "5593f95e1450b5791b9904e52c7ce511ea92e105" })],
+      });
     } finally {
       runtime.dispose();
     }

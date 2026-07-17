@@ -15,8 +15,10 @@ import { lastClipboardFile, writeClipboard } from "../util/clipboard";
 import { authorizeApi, serveToken } from "./auth";
 import { getNetworkStatus, parseNetworkMode, setNetworkMode } from "./networkMode";
 import { parseSearchSort, searchAll } from "./searchAll";
+import { magnetFromTorrentBytes } from "../sources/torrentFile";
 
 const MAX_BODY = 64 * 1024;
+const MAX_TORRENT_BODY = 2 * 1024 * 1024;
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -82,6 +84,18 @@ async function readBody(req: IncomingMessage): Promise<string> {
     chunks.push(buf);
   }
   return Buffer.concat(chunks).toString("utf8");
+}
+
+async function readBinaryBody(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buf.length;
+    if (total > maxBytes) throw new Error("body too large");
+    chunks.push(buf);
+  }
+  return Buffer.concat(chunks);
 }
 
 function serializeDownload(item: ReturnType<TorzlinkRuntime["queue"]["getItems"]>[number]) {
@@ -241,6 +255,53 @@ async function handlePostDownloads(
   runtime.queue.add(safe, runtime.config.downloadDir);
   runtime.queue.emit("web-added", safe);
   sendJson(res, 201, { ok: true, id: safe.id });
+}
+
+async function handlePostTorrent(
+  req: IncomingMessage,
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+): Promise<void> {
+  let buf: Buffer;
+  try {
+    buf = await readBinaryBody(req, MAX_TORRENT_BODY);
+  } catch {
+    sendJson(res, 413, { error: "torrent too large (max 2MB)" });
+    return;
+  }
+  if (buf.length === 0) {
+    sendJson(res, 400, { error: "empty torrent body" });
+    return;
+  }
+
+  const parsed = await magnetFromTorrentBytes(buf);
+  const safe = parsed
+    ? sanitizeDownloadInput({
+        id: parsed.infoHash,
+        name: parsed.name,
+        magnet: parsed.magnet,
+      })
+    : null;
+  if (!safe) {
+    sendJson(res, 400, { error: "invalid .torrent file" });
+    return;
+  }
+
+  const existing = runtime.queue.getItems().find((it) => it.id === safe.id);
+  if (existing && existing.status !== "failed") {
+    sendJson(res, 409, {
+      ok: false,
+      error: "already in queue",
+      id: safe.id,
+      status: existing.status,
+    });
+    return;
+  }
+
+  await fs.mkdir(runtime.config.downloadDir, { recursive: true }).catch(() => {});
+  runtime.queue.add(safe, runtime.config.downloadDir);
+  runtime.queue.emit("web-added", safe);
+  sendJson(res, 201, { ok: true, id: safe.id, name: safe.name });
 }
 
 async function handlePostNetwork(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -574,6 +635,9 @@ async function handleApiPost(
       return true;
     case "/api/downloads":
       await handlePostDownloads(req, res, runtime);
+      return true;
+    case "/api/torrent":
+      await handlePostTorrent(req, res, runtime);
       return true;
     default:
       return handleDownloadAction(res, runtime, url.pathname);

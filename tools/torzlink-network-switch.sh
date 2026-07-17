@@ -52,6 +52,10 @@ fi
 COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-torzlink}"
 export COMPOSE_PROJECT_NAME
 
+# Capture previous mode before patching (for rollback if compose up fails).
+prev_mode="$(grep -E '^[[:space:]]*TORZLINK_NETWORK_MODE=' "${ENV_FILE}" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '\r' || true)"
+case "${prev_mode}" in direct|vpn) ;; *) prev_mode=direct ;; esac
+
 # Patch .env (idempotent with server-side TORZLINK_DEPLOY_ENV_FILE patch)
 env_owner="$(stat -c '%u:%g' "${ENV_FILE}" 2>/dev/null || echo "1000:10")"
 if grep -qE '^[[:space:]]*TORZLINK_NETWORK_MODE=' "${ENV_FILE}"; then
@@ -120,6 +124,7 @@ compose() {
 }
 
 info "applying TorZlink profile=${mode} (project=${COMPOSE_PROJECT_NAME})"
+
 if [ "${mode}" = "direct" ]; then
   docker compose --env-file "${ENV_FILE}" --profile vpn -f "${COMPOSE_FILE}" down 2>/dev/null || true
 else
@@ -127,5 +132,20 @@ else
 fi
 docker rm -f torzlink 2>/dev/null || true
 
-compose up -d
+if ! compose up -d; then
+  info "compose up failed for ${mode} — attempting restore to ${prev_mode}"
+  if grep -qE '^[[:space:]]*TORZLINK_NETWORK_MODE=' "${ENV_FILE}"; then
+    tmp="$(mktemp)"
+    sed -E "s/^[[:space:]]*TORZLINK_NETWORK_MODE=.*/TORZLINK_NETWORK_MODE=${prev_mode}/" "${ENV_FILE}" >"${tmp}"
+    cat "${tmp}" >"${ENV_FILE}"
+    rm -f "${tmp}"
+  fi
+  chmod 600 "${ENV_FILE}" 2>/dev/null || true
+  if [ "$(id -u)" = "0" ]; then
+    chown "${env_owner}" "${ENV_FILE}" 2>/dev/null || true
+  fi
+  docker compose --env-file "${ENV_FILE}" --profile "${prev_mode}" -f "${COMPOSE_FILE}" up -d \
+    || die "compose up failed for ${mode} and restore to ${prev_mode} also failed"
+  die "compose up failed for ${mode}; restored profile ${prev_mode}"
+fi
 info "TorZlink up (profile=${mode})"

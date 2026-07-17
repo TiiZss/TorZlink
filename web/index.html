@@ -142,6 +142,18 @@
                 </label>
                 <button type="submit">Añadir</button>
               </form>
+              <form id="torrent-form" class="row torrent-row">
+                <label class="prompt-field file-field">
+                  <span class="caret">.t</span>
+                  <input
+                    id="torrent-file"
+                    name="torrent"
+                    type="file"
+                    accept=".torrent,application/x-bittorrent"
+                  />
+                </label>
+                <button type="submit">Subir .torrent</button>
+              </form>
               <ul id="queue" class="list"></ul>
             </div>
             <div id="lib-history" class="lib-pane" data-lib-pane="history" hidden>
