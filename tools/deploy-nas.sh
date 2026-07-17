@@ -112,7 +112,7 @@ cmd_install() {
     info "hint: set PROXY_NET_NAME from: docker network ls"
   fi
   if [[ "${TORZLINK_NETWORK_MODE:-direct}" == "vpn" ]]; then
-    info "vpn mode: paste Traefik labels from packaging/docker/traefik-gluetun-torzlink.labels.md onto gluetun"
+    info "vpn mode: TorZlink Traefik labels must be on gluetun (ensure-gluetun-traefik-labels.sh --apply)"
   fi
   if [[ -z "${DOCKER_GID:-}" ]]; then
     info "hint: set DOCKER_GID=\$(stat -c '%g' /var/run/docker.sock) for in-UI VPN switch"
@@ -136,6 +136,16 @@ cmd_up() {
     local g="${GLUETUN_CONTAINER_NAME:-gluetun}"
     docker inspect -f '{{.State.Running}}' "${g}" 2>/dev/null | grep -qx true \
       || die "gluetun container '${g}' is not running"
+    local ensure="${DEPLOY_DIR}/ensure-gluetun-traefik-labels.sh"
+    if [[ ! -f "${ensure}" ]]; then
+      ensure="${SCRIPT_DIR}/ensure-gluetun-traefik-labels.sh"
+    fi
+    if [[ -f "${ensure}" ]]; then
+      sh "${ensure}" --apply \
+        || die "TorZlink Traefik labels missing on gluetun — see packaging/docker/traefik-gluetun-torzlink.labels.md"
+    else
+      info "hint: copy ensure-gluetun-traefik-labels.sh to ${DEPLOY_DIR} (or paste labels onto gluetun)"
+    fi
   fi
   # Tear down the other profile so only one torzlink exists
   if [[ "${profile}" == "direct" ]]; then

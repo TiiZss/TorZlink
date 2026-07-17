@@ -126,6 +126,14 @@ if [ "${mode}" = "vpn" ]; then
   g="${GLUETUN_CONTAINER_NAME:-gluetun}"
   docker inspect -f '{{.State.Running}}' "${g}" 2>/dev/null | grep -qx true \
     || die "gluetun container '${g}' is not running"
+  ensure="${DEPLOY_DIR}/ensure-gluetun-traefik-labels.sh"
+  if [ -f "${ensure}" ]; then
+    info "ensuring TorZlink Traefik labels on ${g}"
+    sh "${ensure}" --apply \
+      || die "TorZlink Traefik labels missing on gluetun — see traefik-gluetun-torzlink.labels.md"
+  else
+    info "hint: ${ensure} not found — paste Traefik labels onto gluetun for vpn UI"
+  fi
 fi
 
 compose() {

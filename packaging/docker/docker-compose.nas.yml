@@ -65,6 +65,8 @@ services:
       - traefik.enable=true
       - traefik.http.routers.torzlink.entrypoints=web
       - traefik.http.routers.torzlink.rule=Host(`torzlink.lan`)
+      # Prefer direct backend over gluetun's torzlink-vpn router (priority=1).
+      - traefik.http.routers.torzlink.priority=100
       - traefik.http.routers.torzlink.service=torzlink-service
       - traefik.http.services.torzlink-service.loadbalancer.server.port=8787
 

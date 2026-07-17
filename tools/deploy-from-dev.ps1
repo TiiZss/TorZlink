@@ -58,6 +58,7 @@ $ComposeSrc = Join-Path $RepoRoot "packaging\docker\docker-compose.nas.yml"
 $EnvExample = Join-Path $RepoRoot "packaging\docker\.env.nas.example"
 $LabelsSrc = Join-Path $RepoRoot "packaging\docker\traefik-gluetun-torzlink.labels.md"
 $SwitchSrc = Join-Path $RepoRoot "tools\torzlink-network-switch.sh"
+$EnsureGluetunLabelsSrc = Join-Path $RepoRoot "tools\ensure-gluetun-traefik-labels.sh"
 
 # Priority: CLI param > process env > project .env > default
 $NasHost = Coalesce $NasHost (Coalesce $env:NAS_HOST (Coalesce (Read-DotEnvValue $LocalEnv "NAS_HOST") "192.168.1.5"))
@@ -406,6 +407,10 @@ try {
   if (Test-Path $LabelsSrc) {
     Copy-ToNas $LabelsSrc "$DeployDir/traefik-gluetun-torzlink.labels.md"
   }
+  if (Test-Path $EnsureGluetunLabelsSrc) {
+    Copy-ToNas $EnsureGluetunLabelsSrc "$DeployDir/ensure-gluetun-traefik-labels.sh"
+    Invoke-Nas "chmod +x '$DeployDir/ensure-gluetun-traefik-labels.sh'"
+  }
 
   $tmpEnv = Join-Path $env:TEMP "torzlink-nas.env"
   if (-not (Test-Nas "test -f '$DeployDir/.env'")) {
@@ -475,6 +480,12 @@ try {
       "echo `"gluetun $gluetunName not running`"; exit 1; fi; "
     )
   }
+  # Always ensure gluetun Traefik labels (idempotent; needed for future VPN switch).
+  $composeCmd += (
+    "if [ -f ensure-gluetun-traefik-labels.sh ]; then " +
+    "sh ensure-gluetun-traefik-labels.sh --apply; " +
+    "else echo 'warn: ensure-gluetun-traefik-labels.sh missing'; fi; "
+  )
   $composeCmd += (
     "docker compose --env-file .env --profile '$NetworkMode' -f docker-compose.nas.yml up -d; " +
     "docker ps --filter name=torzlink --format '$fmt'"
@@ -483,7 +494,7 @@ try {
 
   Info "done. Open http://torzlink.lan (Pi-hole DNS -> Traefik). Bearer token required on /api/*."
   if ($NetworkMode -eq "vpn") {
-    Info "vpn mode: ensure Traefik labels from traefik-gluetun-torzlink.labels.md are on gluetun"
+    Info "vpn mode: gluetun must expose TorZlink Traefik labels (ensure-gluetun-traefik-labels.sh)"
   }
 } finally {
   if ($tmpEnv -and (Test-Path $tmpEnv)) {

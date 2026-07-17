@@ -121,6 +121,8 @@ scp_to "${REPO_ROOT}/packaging/docker/.env.nas.example" "${DEPLOY_DIR}/.env.nas.
 scp_to "${REPO_ROOT}/tools/torzlink-network-switch.sh" "${DEPLOY_DIR}/torzlink-network-switch.sh"
 ssh_nas "chmod +x '${DEPLOY_DIR}/torzlink-network-switch.sh'"
 scp_to "${REPO_ROOT}/packaging/docker/traefik-gluetun-torzlink.labels.md" "${DEPLOY_DIR}/traefik-gluetun-torzlink.labels.md" || true
+scp_to "${REPO_ROOT}/tools/ensure-gluetun-traefik-labels.sh" "${DEPLOY_DIR}/ensure-gluetun-traefik-labels.sh" || true
+ssh_nas "chmod +x '${DEPLOY_DIR}/ensure-gluetun-traefik-labels.sh' 2>/dev/null || true"
 
 TMP_ENV="$(mktemp)"
 if ssh_nas "test -f '${DEPLOY_DIR}/.env'"; then
@@ -190,6 +192,9 @@ docker compose --env-file .env --profile vpn -f docker-compose.nas.yml down 2>/d
 if [ '${NETWORK_MODE}' = 'vpn' ]; then
   docker inspect -f '{{.State.Running}}' '${GLUETUN_NAME}' 2>/dev/null | grep -qx true \
     || { echo "gluetun '${GLUETUN_NAME}' not running"; exit 1; }
+fi
+if [ -f ensure-gluetun-traefik-labels.sh ]; then
+  sh ensure-gluetun-traefik-labels.sh --apply
 fi
 docker compose --env-file .env --profile '${NETWORK_MODE}' -f docker-compose.nas.yml up -d
 docker ps --filter name=^torzlink\$ --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}'

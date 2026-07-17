@@ -1,6 +1,6 @@
 # Next session — TorZlink backlog
 
-Session wrap-up **2026-07-17**: CI PR #2 en verde; paths lazy + Trivy `load: true`; web **download-to…** (`dir` API + UI). Pendiente ops: Traefik labels en Gluetun para UI en VPN.
+Session wrap-up **2026-07-17**: CI PR #2 en verde; paths lazy + Trivy `load: true`; web **download-to…** (`dir` API + UI). Traefik labels TorZlink en Gluetun **aplicadas** (`ensure-gluetun-traefik-labels.sh --apply`).
 
 ## Product invariant — Web ≡ TUI
 
@@ -42,11 +42,10 @@ Session wrap-up **2026-07-17**: CI PR #2 en verde; paths lazy + Trivy `load: tru
 
 | Priority | Area | Item | Notes |
 | --- | --- | --- | --- |
-| 1 | Ops | Traefik labels on Gluetun (vpn UI) | Switch aplica `network_mode:container:gluetun`; sin labels en Gluetun, `torzlink.lan` no responde en VPN |
-| 2 | QA | Manual TUI download smoke test in Docker (Windows host) | Validate end-to-end on the primary dev machine |
-| 3 | Docs | Windows-specific Docker volume docs | `%cd%`, WSL2, Desktop bind-mount quirks |
-| 4 | Quality P2 | Zod schema for `config.json` | `downloadDir`, `trackers[]` validation at load |
-| 5 | Quality P2 | Scraper anti-corruption layer | Rebuild magnet from infoHash; no raw HTML passthrough |
+| 1 | QA | Manual TUI download smoke (interactive Docker `-it`) | Automated serve+queue smoke done 2026-07-17; optional interactive TUI remain |
+| 2 | Docs | Windows-specific Docker volume docs | `%cd%`, WSL2, Desktop bind-mount quirks |
+| 3 | Quality P2 | Zod schema for `config.json` | `downloadDir`, `trackers[]` validation at load |
+| 4 | Quality P2 | Scraper anti-corruption layer | Rebuild magnet from infoHash; no raw HTML passthrough |
 
 ## Also on the board
 

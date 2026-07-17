@@ -256,7 +256,7 @@ bash repo/tools/deploy-nas.sh up
 ```
 
 - **`TORZLINK_NETWORK_MODE=direct`** — TorZlink on `proxy_net`; Traefik labels on the service (`Host(\`torzlink.lan\`)`).
-- **`TORZLINK_NETWORK_MODE=vpn`** — `network_mode: container:gluetun`; paste labels from [packaging/docker/traefik-gluetun-torzlink.labels.md](packaging/docker/traefik-gluetun-torzlink.labels.md) onto Gluetun.
+- **`TORZLINK_NETWORK_MODE=vpn`** — `network_mode: container:gluetun`; run `sh tools/ensure-gluetun-traefik-labels.sh --apply` on the NAS (or paste labels from [packaging/docker/traefik-gluetun-torzlink.labels.md](packaging/docker/traefik-gluetun-torzlink.labels.md) onto Gluetun).
 - **Web VPN toggle** — with the NAS compose defaults (Docker socket + `torzlink-network-switch.sh`), **VPN ON/OFF** in the UI recreates the profile automatically. Set `DOCKER_GID` to the host socket group (`stat -c '%g' /var/run/docker.sock`) and keep `TORZLINK_SERVE_TOKEN` set — the socket is full Docker access for that project.
 
 Point Pi-hole DNS `torzlink.lan` at Traefik’s LAN IP.
