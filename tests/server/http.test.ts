@@ -271,12 +271,13 @@ describe("HTTP API", () => {
       expect(dup.json).toMatchObject({ ok: false, error: "already in queue", id: hash });
 
       const list = await request(handler, "GET", "/api/downloads");
-      expect((list.json as { items: unknown[] }).items).toHaveLength(1);
+      const items = (list.json as { items: { id: string }[] }).items;
+      expect(items.map((i) => i.id)).toEqual([hash]);
 
       const cancel = await request(handler, "POST", `/api/downloads/${hash}/cancel`, "{}");
       expect(cancel.status).toBe(200);
       const list2 = await request(handler, "GET", "/api/downloads");
-      expect((list2.json as { items: unknown[] }).items).toHaveLength(0);
+      expect((list2.json as { items: { id: string }[] }).items.map((i) => i.id)).not.toContain(hash);
     } finally {
       runtime.dispose();
     }
