@@ -226,19 +226,65 @@ async function readJsonBody(
   }
 }
 
+async function ensureDownloadDirUnderRoot(
+  dir: string,
+  defaultDir: string,
+): Promise<PatchFieldResult> {
+  try {
+    await fs.mkdir(dir, { recursive: true });
+  } catch {
+    return { ok: false, status: 400, body: { error: "couldn't use dir" } };
+  }
+
+  if (!downloadDirLockedByEnv()) {
+    return { ok: true, value: dir };
+  }
+
+  // Prefix check first (cheap); then realpath so symlinks under the jail cannot
+  // escape to the host (shared NAS download trees).
+  const root = path.resolve(defaultDir);
+  const resolved = path.resolve(dir);
+  const underRoot = resolved === root || resolved.startsWith(root + path.sep);
+  if (!underRoot) {
+    return {
+      ok: false,
+      status: 403,
+      body: { error: "dir must be under TORZLINK_DOWNLOAD_DIR" },
+    };
+  }
+
+  try {
+    await fs.mkdir(root, { recursive: true });
+    const rootReal = await fs.realpath(root);
+    const dirReal = await fs.realpath(dir);
+    const underReal =
+      dirReal === rootReal || dirReal.startsWith(rootReal + path.sep);
+    if (!underReal) {
+      return {
+        ok: false,
+        status: 403,
+        body: { error: "dir must be under TORZLINK_DOWNLOAD_DIR" },
+      };
+    }
+    return { ok: true, value: dirReal };
+  } catch {
+    return { ok: false, status: 400, body: { error: "couldn't use dir" } };
+  }
+}
+
 async function resolvePerItemDownloadDir(
   raw: unknown,
   defaultDir: string,
 ): Promise<PatchFieldResult> {
   if (raw === undefined || raw === null) {
-    return { ok: true, value: defaultDir };
+    return ensureDownloadDirUnderRoot(defaultDir, defaultDir);
   }
   if (typeof raw !== "string") {
     return { ok: false, status: 400, body: { error: "dir must be a string" } };
   }
   const trimmed = raw.trim();
   if (!trimmed) {
-    return { ok: true, value: defaultDir };
+    return ensureDownloadDirUnderRoot(defaultDir, defaultDir);
   }
 
   let dir = normalizeDownloadDir(trimmed);
@@ -252,25 +298,7 @@ async function resolvePerItemDownloadDir(
   }
   dir = path.normalize(dir);
 
-  if (downloadDirLockedByEnv()) {
-    const root = path.resolve(defaultDir);
-    const resolved = path.resolve(dir);
-    const underRoot = resolved === root || resolved.startsWith(root + path.sep);
-    if (!underRoot) {
-      return {
-        ok: false,
-        status: 403,
-        body: { error: "dir must be under TORZLINK_DOWNLOAD_DIR" },
-      };
-    }
-  }
-
-  try {
-    await fs.mkdir(dir, { recursive: true });
-  } catch {
-    return { ok: false, status: 400, body: { error: "couldn't use dir" } };
-  }
-  return { ok: true, value: dir };
+  return ensureDownloadDirUnderRoot(dir, defaultDir);
 }
 
 async function handlePostDownloads(

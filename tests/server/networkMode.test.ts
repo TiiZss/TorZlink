@@ -12,7 +12,10 @@ import {
 vi.mock("node:child_process", () => ({
   spawn: vi.fn(() => {
     const child = {
-      on: vi.fn(),
+      on: vi.fn((event: string, cb: (code: number | null, signal: NodeJS.Signals | null) => void) => {
+        // Handoff script exits 0 after scheduling the sibling container.
+        if (event === "exit") queueMicrotask(() => cb(0, null));
+      }),
       unref: vi.fn(),
       exitCode: null as number | null,
     };
