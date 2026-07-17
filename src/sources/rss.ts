@@ -1,4 +1,5 @@
 import { fetchResilient, HttpError, USER_AGENT } from "../util/net";
+import { normalizeInfoHash, sanitizeParsedMagnet } from "./magnet";
 import type { SearchOptions, SourceId, TorrentResult } from "./types";
 
 export function unescapeEntities(s: string): string {
@@ -17,15 +18,30 @@ function parseRssItems(xml: string, source: SourceId): TorrentResult[] {
   for (const item of items) {
     const magnetMatch = item.match(/href="(magnet:\?xt=urn:btih:[^"]+)"/i);
     if (!magnetMatch) continue;
-    const magnet = unescapeEntities(magnetMatch[1]!);
-    const infoHash = magnet.match(/urn:btih:([a-zA-Z0-9]+)/)?.[1]?.toLowerCase() ?? "";
-    if (!infoHash) continue;
+    const rawMagnet = unescapeEntities(magnetMatch[1]!);
+    const rawHash = rawMagnet.match(/urn:btih:([a-zA-Z0-9]+)/)?.[1] ?? "";
+    if (!rawHash) continue;
 
     const name = unescapeEntities(item.match(/<title>(.*?)<\/title>/)?.[1] ?? "Unknown Title");
+    const safe = sanitizeParsedMagnet({
+      infoHash: normalizeInfoHash(rawHash),
+      name,
+      magnet: "",
+    });
+    if (!safe) continue;
     const addedStr = item.match(/<pubDate>(.*?)<\/pubDate>/)?.[1] ?? "";
     const added = addedStr ? new Date(addedStr).getTime() / 1000 : 0;
 
-    out.push({ infoHash, name, sizeBytes: 0, seeders: 0, leechers: 0, source, magnet, added });
+    out.push({
+      infoHash: safe.infoHash,
+      name: safe.name,
+      sizeBytes: 0,
+      seeders: 0,
+      leechers: 0,
+      source,
+      magnet: safe.magnet,
+      added,
+    });
   }
   return out;
 }

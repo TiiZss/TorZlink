@@ -19,6 +19,7 @@
     "predev": "node scripts/ensure.cjs --dev",
     "prestart": "node scripts/ensure.cjs",
     "launch": "node scripts/ensure.cjs --dev && tsx src/app/entry.tsx",
+    "serve": "node scripts/ensure.cjs --dev && tsx src/app/entry.tsx serve",
     "dev": "tsx src/app/entry.tsx",
     "build": "tsup",
     "postbuild": "node scripts/postbuild.cjs",
@@ -73,7 +74,8 @@
     "ink": "^7.0.5",
     "parse-torrent": "^11.0.21",
     "react": "^19.2.7",
-    "webtorrent": "^2.4.1"
+    "webtorrent": "^2.4.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^25.9.2",

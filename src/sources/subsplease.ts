@@ -1,5 +1,5 @@
 import { fetchResilient, HttpError, USER_AGENT } from "../util/net";
-import { parseMagnet } from "./magnet";
+import { parseMagnet, sanitizeParsedMagnet } from "./magnet";
 import type { SearchOptions, Source, TorrentResult } from "./types";
 
 const API = "https://subsplease.org/api/";
@@ -51,15 +51,21 @@ async function search(query: string, opts: SearchOptions = {}): Promise<TorrentR
     if (!parsed) continue;
     const show = entry.show ?? "Unknown";
     const ep = entry.episode ? ` - ${entry.episode}` : "";
-    const sizeMatch = dl.magnet.match(/[?&]xl=(\d+)/);
-    out.push({
+    const safe = sanitizeParsedMagnet({
       infoHash: parsed.infoHash,
       name: `${show}${ep} [${dl.res ?? "?"}p]`,
+      magnet: "",
+    });
+    if (!safe) continue;
+    const sizeMatch = dl.magnet.match(/[?&]xl=(\d+)/);
+    out.push({
+      infoHash: safe.infoHash,
+      name: safe.name,
       sizeBytes: sizeMatch ? Number(sizeMatch[1]) : 0,
       seeders: 0,
       leechers: 0,
       source: "subsplease",
-      magnet: parsed.magnet,
+      magnet: safe.magnet,
       added: entry.release_date ? new Date(entry.release_date).getTime() / 1000 : undefined,
     });
   }

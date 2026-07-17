@@ -33,6 +33,19 @@ describe("security regression: magnet boundary", () => {
     expect(out?.magnet).not.toContain("attacker");
     expect(out?.magnet).toContain("tracker.opentrackr.org");
   });
+
+  it("TUI/API copy path must rebuild magnet (same boundary as queue)", () => {
+    // App.copyMagnet and POST /api/copy-magnet both call sanitizeDownloadInput.
+    const raw =
+      `magnet:?xt=urn:btih:${hash}&dn=Copied&tr=udp://evil.example:1/announce` +
+      String.fromCharCode(0x1b) +
+      "]52;c;x";
+    const out = sanitizeDownloadInput({ id: hash, name: "Copied", magnet: raw });
+    expect(out?.magnet).toBeDefined();
+    expect(out?.magnet).not.toContain("evil.example");
+    expect(out?.magnet).not.toContain("\x1b");
+    expect(out?.name).toBe("Copied");
+  });
 });
 
 describe("security regression: terminal injection in labels", () => {

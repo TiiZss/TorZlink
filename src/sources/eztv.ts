@@ -1,5 +1,5 @@
 import { fetchResilient, HttpError, USER_AGENT } from "../util/net";
-import { buildMagnet } from "./magnet";
+import { normalizeInfoHash, sanitizeParsedMagnet } from "./magnet";
 import type { SearchOptions, Source, TorrentResult } from "./types";
 
 const API = "https://eztvx.to/api/get-torrents";
@@ -31,18 +31,19 @@ async function search(query: string, opts: SearchOptions = {}): Promise<TorrentR
   const json = (await res.json()) as EztvResponse;
   const out: TorrentResult[] = [];
   for (const t of json.torrents ?? []) {
-    const hash = (t.hash ?? "").toLowerCase();
+    const hash = normalizeInfoHash(t.hash ?? "");
     const name = t.title || t.filename || hash;
-    const magnet = t.magnet_url || (hash ? buildMagnet(hash, name) : "");
-    if (!magnet || !hash) continue;
+    // Ignore magnet_url — rebuild from hash so scrape trackers cannot smuggle.
+    const safe = sanitizeParsedMagnet({ infoHash: hash, name, magnet: "" });
+    if (!safe) continue;
     out.push({
-      infoHash: hash,
-      name,
+      infoHash: safe.infoHash,
+      name: safe.name,
       sizeBytes: Number(t.size_bytes ?? 0) || 0,
       seeders: t.seeds ?? 0,
       leechers: t.peers ?? 0,
       source: "eztv",
-      magnet,
+      magnet: safe.magnet,
       added: t.date_released_unix,
     });
   }

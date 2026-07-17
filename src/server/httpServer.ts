@@ -2,14 +2,25 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { saveConfig } from "../config/config";
+import { downloadDirLockedByEnv, downloadJailRoot, pathUnderJail } from "../config/downloadJail";
+import { envFlag } from "../config/env-vars";
+import { normalizeDownloadDir } from "../config/folder";
+import { parseTrackers, unknownTrackerHosts } from "../config/trackers";
 import type { TorzlinkRuntime } from "../core/runtime";
+import { notifyMagnetCopied } from "../integrations/telegram";
+import { CATEGORIES, parseSourceGroup } from "../sources/categories";
 import { sanitizeDownloadInput, sanitizeMagnetInput } from "../sources/magnet";
 import type { SourceId } from "../sources/types";
+import { lastClipboardFile, writeClipboard } from "../util/clipboard";
 import { authorizeApi, serveToken } from "./auth";
 import { getNetworkStatus, parseNetworkMode, setNetworkMode } from "./networkMode";
-import { searchAll } from "./searchAll";
+import { checkRateLimit } from "./rateLimit";
+import { parseSearchSort, searchAll } from "./searchAll";
+import { magnetFromTorrentBytes } from "../sources/torrentFile";
 
 const MAX_BODY = 64 * 1024;
+const MAX_TORRENT_BODY = 2 * 1024 * 1024;
 
 const MIME: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -77,6 +88,18 @@ async function readBody(req: IncomingMessage): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+async function readBinaryBody(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buf.length;
+    if (total > maxBytes) throw new Error("body too large");
+    chunks.push(buf);
+  }
+  return Buffer.concat(chunks);
+}
+
 function serializeDownload(item: ReturnType<TorzlinkRuntime["queue"]["getItems"]>[number]) {
   return {
     id: item.id,
@@ -93,6 +116,41 @@ function serializeDownload(item: ReturnType<TorzlinkRuntime["queue"]["getItems"]
     addedAt: item.addedAt,
     dir: item.dir,
   };
+}
+
+function serializeHistory(
+  item: ReturnType<TorzlinkRuntime["queue"]["getHistory"]>[number],
+  includeMagnet: boolean,
+) {
+  return {
+    id: item.id,
+    name: item.name,
+    source: item.source,
+    sizeBytes: item.sizeBytes,
+    dir: item.dir,
+    completedAt: item.completedAt,
+    ...(includeMagnet ? { magnet: item.magnet } : {}),
+  };
+}
+
+function serializeSeed(item: ReturnType<TorzlinkRuntime["queue"]["getSeeds"]>[number]) {
+  return {
+    id: item.id,
+    name: item.name,
+    source: item.source,
+    status: item.status,
+    sizeBytes: item.sizeBytes,
+    uploadSpeed: item.uploadSpeed,
+    uploaded: item.uploaded,
+    peers: item.peers,
+    dir: item.dir,
+  };
+}
+
+function parseHideDead(raw: string | null): boolean {
+  if (!raw) return false;
+  const t = raw.trim().toLowerCase();
+  return t === "1" || t === "true" || t === "yes";
 }
 
 function requireApiAuth(req: IncomingMessage, res: ServerResponse): boolean {
@@ -170,6 +228,85 @@ async function readJsonBody(
   }
 }
 
+async function ensureDownloadDirUnderRoot(
+  dir: string,
+  defaultDir: string,
+): Promise<PatchFieldResult> {
+  try {
+    await fs.mkdir(dir, { recursive: true });
+  } catch {
+    return { ok: false, status: 400, body: { error: "couldn't use dir" } };
+  }
+
+  const jail = downloadJailRoot() ?? (downloadDirLockedByEnv() ? path.resolve(defaultDir) : null);
+  if (!jail) {
+    return { ok: true, value: dir };
+  }
+
+  // Prefix check first (cheap); then realpath so symlinks under the jail cannot
+  // escape to the host (shared NAS download trees).
+  if (!pathUnderJail(dir, jail)) {
+    return {
+      ok: false,
+      status: 403,
+      body: {
+        error: downloadDirLockedByEnv()
+          ? "dir must be under TORZLINK_DOWNLOAD_DIR"
+          : "dir must be under TORZLINK_DOWNLOAD_ROOT",
+      },
+    };
+  }
+
+  try {
+    await fs.mkdir(jail, { recursive: true });
+    const rootReal = await fs.realpath(jail);
+    const dirReal = await fs.realpath(dir);
+    if (!pathUnderJail(dirReal, rootReal)) {
+      return {
+        ok: false,
+        status: 403,
+        body: {
+          error: downloadDirLockedByEnv()
+            ? "dir must be under TORZLINK_DOWNLOAD_DIR"
+            : "dir must be under TORZLINK_DOWNLOAD_ROOT",
+        },
+      };
+    }
+    return { ok: true, value: dirReal };
+  } catch {
+    return { ok: false, status: 400, body: { error: "couldn't use dir" } };
+  }
+}
+
+async function resolvePerItemDownloadDir(
+  raw: unknown,
+  defaultDir: string,
+): Promise<PatchFieldResult> {
+  if (raw === undefined || raw === null) {
+    return ensureDownloadDirUnderRoot(defaultDir, defaultDir);
+  }
+  if (typeof raw !== "string") {
+    return { ok: false, status: 400, body: { error: "dir must be a string" } };
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return ensureDownloadDirUnderRoot(defaultDir, defaultDir);
+  }
+
+  let dir = normalizeDownloadDir(trimmed);
+  if (!dir) {
+    return { ok: false, status: 400, body: { error: "dir is empty" } };
+  }
+
+  // Relative paths land under the configured download dir (useful on NAS).
+  if (!path.isAbsolute(dir)) {
+    dir = path.join(defaultDir, dir);
+  }
+  dir = path.normalize(dir);
+
+  return ensureDownloadDirUnderRoot(dir, defaultDir);
+}
+
 async function handlePostDownloads(
   req: IncomingMessage,
   res: ServerResponse,
@@ -195,10 +332,72 @@ async function handlePostDownloads(
     return;
   }
 
-  await fs.mkdir(runtime.config.downloadDir, { recursive: true }).catch(() => {});
-  runtime.queue.add(safe, runtime.config.downloadDir);
+  const resolved = await resolvePerItemDownloadDir(body.dir, runtime.config.downloadDir);
+  if (!resolved.ok) {
+    sendJson(res, resolved.status, resolved.body);
+    return;
+  }
+
+  runtime.queue.add(safe, resolved.value);
   runtime.queue.emit("web-added", safe);
-  sendJson(res, 201, { ok: true, id: safe.id });
+  sendJson(res, 201, { ok: true, id: safe.id, dir: resolved.value });
+}
+
+async function handlePostTorrent(
+  req: IncomingMessage,
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+): Promise<void> {
+  let buf: Buffer;
+  try {
+    buf = await readBinaryBody(req, MAX_TORRENT_BODY);
+  } catch {
+    sendJson(res, 413, { error: "torrent too large (max 2MB)" });
+    return;
+  }
+  if (buf.length === 0) {
+    sendJson(res, 400, { error: "empty torrent body" });
+    return;
+  }
+
+  const parsed = await magnetFromTorrentBytes(buf);
+  const safe = parsed
+    ? sanitizeDownloadInput({
+        id: parsed.infoHash,
+        name: parsed.name,
+        magnet: parsed.magnet,
+      })
+    : null;
+  if (!safe) {
+    sendJson(res, 400, { error: "invalid .torrent file" });
+    return;
+  }
+
+  const existing = runtime.queue.getItems().find((it) => it.id === safe.id);
+  if (existing && existing.status !== "failed") {
+    sendJson(res, 409, {
+      ok: false,
+      error: "already in queue",
+      id: safe.id,
+      status: existing.status,
+    });
+    return;
+  }
+
+  const url = new URL(req.url || "/", "http://localhost");
+  const dirParam = url.searchParams.get("dir");
+  const resolved = await resolvePerItemDownloadDir(
+    dirParam && dirParam.length > 0 ? dirParam : undefined,
+    runtime.config.downloadDir,
+  );
+  if (!resolved.ok) {
+    sendJson(res, resolved.status, resolved.body);
+    return;
+  }
+
+  runtime.queue.add(safe, resolved.value);
+  runtime.queue.emit("web-added", safe);
+  sendJson(res, 201, { ok: true, id: safe.id, name: safe.name, dir: resolved.value });
 }
 
 async function handlePostNetwork(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -212,7 +411,177 @@ async function handlePostNetwork(req: IncomingMessage, res: ServerResponse): Pro
   sendJson(res, 200, { ok: true, ...(await setNetworkMode(mode)) });
 }
 
+function serializeConfig(runtime: TorzlinkRuntime) {
+  return {
+    downloadDir: runtime.config.downloadDir,
+    trackers: runtime.config.trackers,
+    seedOnComplete: runtime.config.seedOnComplete,
+    downloadDirLocked: downloadDirLockedByEnv(),
+    downloadRoot: downloadJailRoot(),
+    unknownTrackerHosts: unknownTrackerHosts(runtime.config.trackers),
+  };
+}
+
+function parseTrackersField(raw: unknown): string[] | null {
+  if (typeof raw === "string") return parseTrackers(raw);
+  if (!Array.isArray(raw)) return null;
+  const joined: string[] = [];
+  for (const item of raw) {
+    if (typeof item !== "string") return null;
+    joined.push(item);
+  }
+  return parseTrackers(joined.join("\n"));
+}
+
+type PatchFieldResult =
+  | { ok: true; value: string }
+  | { ok: false; status: number; body: Record<string, unknown> };
+
+async function resolvePatchDownloadDir(
+  raw: unknown,
+  currentDir: string,
+): Promise<PatchFieldResult> {
+  if (typeof raw !== "string") {
+    return { ok: false, status: 400, body: { error: "downloadDir must be a string" } };
+  }
+  const dir = normalizeDownloadDir(raw);
+  if (!dir) {
+    return { ok: false, status: 400, body: { error: "downloadDir is empty" } };
+  }
+  if (dir === currentDir) {
+    return { ok: true, value: currentDir };
+  }
+  if (downloadDirLockedByEnv()) {
+    return {
+      ok: false,
+      status: 409,
+      body: {
+        error: "downloadDir is locked by TORZLINK_DOWNLOAD_DIR",
+        downloadDirLocked: true,
+      },
+    };
+  }
+  const jail = downloadJailRoot();
+  if (jail && !pathUnderJail(dir, jail)) {
+    return {
+      ok: false,
+      status: 403,
+      body: { error: "downloadDir must be under TORZLINK_DOWNLOAD_ROOT" },
+    };
+  }
+  try {
+    await fs.mkdir(dir, { recursive: true });
+    if (jail) {
+      const rootReal = await fs.realpath(jail);
+      const dirReal = await fs.realpath(dir);
+      if (!pathUnderJail(dirReal, rootReal)) {
+        return {
+          ok: false,
+          status: 403,
+          body: { error: "downloadDir must be under TORZLINK_DOWNLOAD_ROOT" },
+        };
+      }
+      return { ok: true, value: dirReal };
+    }
+  } catch {
+    return { ok: false, status: 400, body: { error: "couldn't use downloadDir" } };
+  }
+  return { ok: true, value: dir };
+}
+
+async function handlePatchConfig(
+  req: IncomingMessage,
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+): Promise<void> {
+  const body = await readJsonBody(req, res);
+  if (!body) return;
+
+  const hasDownloadDir = Object.hasOwn(body, "downloadDir");
+  const hasTrackers = Object.hasOwn(body, "trackers");
+  const hasSeed = Object.hasOwn(body, "seedOnComplete");
+  if (!hasDownloadDir && !hasTrackers && !hasSeed) {
+    sendJson(res, 400, { error: "provide downloadDir, trackers, and/or seedOnComplete" });
+    return;
+  }
+
+  let nextDir = runtime.config.downloadDir;
+  let nextTrackers = runtime.config.trackers;
+  let nextSeed = runtime.config.seedOnComplete;
+
+  if (hasDownloadDir) {
+    const resolved = await resolvePatchDownloadDir(body.downloadDir, runtime.config.downloadDir);
+    if (!resolved.ok) {
+      sendJson(res, resolved.status, resolved.body);
+      return;
+    }
+    nextDir = resolved.value;
+  }
+
+  if (hasTrackers) {
+    const parsed = parseTrackersField(body.trackers);
+    if (!parsed) {
+      sendJson(res, 400, { error: "trackers must be a string or string[]" });
+      return;
+    }
+    nextTrackers = parsed;
+  }
+
+  if (hasSeed) {
+    if (typeof body.seedOnComplete !== "boolean") {
+      sendJson(res, 400, { error: "seedOnComplete must be a boolean" });
+      return;
+    }
+    nextSeed = body.seedOnComplete;
+  }
+
+  runtime.config.downloadDir = nextDir;
+  runtime.config.trackers = nextTrackers;
+  runtime.config.seedOnComplete = nextSeed;
+  runtime.queue.setTrackers(nextTrackers);
+  runtime.queue.setSeedOnComplete(nextSeed);
+  await saveConfig(runtime.config);
+
+  sendJson(res, 200, { ok: true, ...serializeConfig(runtime) });
+}
+
+async function handlePostCopyMagnet(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const body = await readJsonBody(req, res);
+  if (!body) return;
+
+  const name = typeof body.name === "string" ? body.name.trim() : "";
+  const magnetRaw = typeof body.magnet === "string" ? body.magnet : "";
+  const infoHashRaw = typeof body.infoHash === "string" ? body.infoHash : undefined;
+  const safe = sanitizeDownloadInput({
+    id: infoHashRaw ?? "",
+    name: name || "torrent",
+    magnet: magnetRaw,
+  });
+  if (!safe) {
+    sendJson(res, 400, { error: "invalid magnet" });
+    return;
+  }
+
+  const ok = await writeClipboard(safe.magnet, { name: safe.name, infoHash: safe.id });
+  const savedPath = lastClipboardFile();
+  if (ok) {
+    notifyMagnetCopied({
+      name: safe.name,
+      magnet: safe.magnet,
+      infoHash: safe.id,
+    });
+  }
+  sendJson(res, ok ? 200 : 500, {
+    ok,
+    savedPath: savedPath ?? undefined,
+    error: ok ? undefined : "couldn't copy magnet",
+  });
+}
+
 const DOWNLOAD_ACTION_RE = /^\/api\/downloads\/([^/]+)\/(pause|resume|cancel)$/;
+const HISTORY_ID_RE = /^\/api\/history\/([^/]+)$/;
+const HISTORY_REDOWNLOAD_RE = /^\/api\/history\/([^/]+)\/redownload$/;
+const SEED_ACTION_RE = /^\/api\/seeds\/([^/]+)\/(pause|resume|toggle)$/;
 
 function handleDownloadAction(
   res: ServerResponse,
@@ -235,6 +604,234 @@ function handleDownloadAction(
   return true;
 }
 
+function handleHistoryDelete(
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+  pathname: string,
+): boolean {
+  const match = HISTORY_ID_RE.exec(pathname);
+  if (!match) return false;
+  const id = decodeURIComponent(match[1]!);
+  const before = runtime.queue.getHistory().length;
+  runtime.queue.removeHistory(id);
+  if (runtime.queue.getHistory().length === before) {
+    sendJson(res, 404, { error: "history item not found" });
+    return true;
+  }
+  sendJson(res, 200, { ok: true, id });
+  return true;
+}
+
+async function handleHistoryRedownload(
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+  pathname: string,
+): Promise<boolean> {
+  const match = HISTORY_REDOWNLOAD_RE.exec(pathname);
+  if (!match) return false;
+  const id = decodeURIComponent(match[1]!);
+  const item = runtime.queue.getHistory().find((h) => h.id === id);
+  if (!item) {
+    sendJson(res, 404, { error: "history item not found" });
+    return true;
+  }
+  const safe = sanitizeDownloadInput({
+    id: item.id,
+    name: item.name,
+    magnet: item.magnet,
+    source: item.source,
+    sizeBytes: item.sizeBytes,
+  });
+  if (!safe) {
+    sendJson(res, 400, { error: "invalid magnet in history" });
+    return true;
+  }
+  const existing = runtime.queue.getItems().find((it) => it.id === safe.id);
+  if (existing && existing.status !== "failed") {
+    sendJson(res, 409, {
+      ok: false,
+      error: "already in queue",
+      id: safe.id,
+      status: existing.status,
+    });
+    return true;
+  }
+  const resolved = await resolvePerItemDownloadDir(
+    item.dir || runtime.config.downloadDir,
+    runtime.config.downloadDir,
+  );
+  if (!resolved.ok) {
+    sendJson(res, resolved.status, resolved.body);
+    return true;
+  }
+  runtime.queue.add(safe, resolved.value);
+  runtime.queue.emit("web-added", safe);
+  sendJson(res, 201, { ok: true, id: safe.id, dir: resolved.value });
+  return true;
+}
+
+function handleSeedAction(
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+  pathname: string,
+): boolean {
+  const match = SEED_ACTION_RE.exec(pathname);
+  if (!match) return false;
+  const id = decodeURIComponent(match[1]!);
+  const action = match[2]!;
+  const history = runtime.queue.getHistory().find((h) => h.id === id);
+  if (!history) {
+    sendJson(res, 404, { error: "seed/history item not found" });
+    return true;
+  }
+  if (action === "pause") runtime.queue.stopSeeding(id);
+  else if (action === "resume") runtime.queue.startSeeding(history);
+  else runtime.queue.toggleSeeding(history);
+  const seed = runtime.queue.getSeed(id);
+  sendJson(res, 200, { ok: true, id, action, status: seed?.status ?? "paused" });
+  return true;
+}
+
+async function handleGetSearch(res: ServerResponse, url: URL): Promise<void> {
+  const q = url.searchParams.get("q") ?? "";
+  const group =
+    parseSourceGroup(url.searchParams.get("group")) ??
+    parseSourceGroup(url.searchParams.get("category"));
+  const hideDead = parseHideDead(url.searchParams.get("hideDead"));
+  const sort = parseSearchSort(url.searchParams.get("sort"));
+  sendJson(res, 200, await searchAll(q, { group, hideDead, sort }));
+}
+
+async function handleApiGet(
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+  url: URL,
+): Promise<boolean> {
+  switch (url.pathname) {
+    case "/api/categories":
+      sendJson(res, 200, { categories: CATEGORIES });
+      return true;
+    case "/api/search":
+      await handleGetSearch(res, url);
+      return true;
+    case "/api/downloads":
+      sendJson(res, 200, { items: runtime.queue.getItems().map(serializeDownload) });
+      return true;
+    case "/api/history":
+      sendJson(res, 200, {
+        items: runtime.queue.getHistory().map((h) => serializeHistory(h, true)),
+      });
+      return true;
+    case "/api/seeds":
+      sendJson(res, 200, { items: runtime.queue.getSeeds().map(serializeSeed) });
+      return true;
+    case "/api/network":
+      sendJson(res, 200, await getNetworkStatus());
+      return true;
+    case "/api/config":
+      sendJson(res, 200, serializeConfig(runtime));
+      return true;
+    default:
+      return false;
+  }
+}
+
+function handleApiDelete(
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+  pathname: string,
+): boolean {
+  if (pathname === "/api/history") {
+    runtime.queue.clearHistory();
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
+  return handleHistoryDelete(res, runtime, pathname);
+}
+
+async function handleApiPost(
+  req: IncomingMessage,
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+  url: URL,
+): Promise<boolean> {
+  if (await handleHistoryRedownload(res, runtime, url.pathname)) return true;
+  if (handleSeedAction(res, runtime, url.pathname)) return true;
+
+  switch (url.pathname) {
+    case "/api/network":
+      await handlePostNetwork(req, res);
+      return true;
+    case "/api/copy-magnet":
+      await handlePostCopyMagnet(req, res);
+      return true;
+    case "/api/downloads":
+      await handlePostDownloads(req, res, runtime);
+      return true;
+    case "/api/torrent":
+      await handlePostTorrent(req, res, runtime);
+      return true;
+    default:
+      return handleDownloadAction(res, runtime, url.pathname);
+  }
+}
+
+function clientRateKey(req: IncomingMessage): string {
+  // Only trust X-Forwarded-For when explicitly enabled (Traefik / reverse proxy).
+  if (envFlag("TORZLINK_TRUST_PROXY")) {
+    const xf = req.headers["x-forwarded-for"];
+    const forwarded = typeof xf === "string" ? xf.split(",")[0]?.trim() : "";
+    if (forwarded) return forwarded;
+  }
+  return req.socket.remoteAddress || "unknown";
+}
+
+/** Cheap authenticated polls must not share the search/mutation budget. */
+function shouldRateLimit(method: string, pathname: string): boolean {
+  if (method !== "GET") return true;
+  return !(
+    pathname === "/api/downloads" ||
+    pathname === "/api/seeds" ||
+    pathname === "/api/history" ||
+    pathname === "/api/events" ||
+    pathname === "/api/network" ||
+    pathname === "/api/config" ||
+    pathname === "/api/categories"
+  );
+}
+
+function handleSseEvents(
+  req: IncomingMessage,
+  res: ServerResponse,
+  runtime: TorzlinkRuntime,
+): void {
+  res.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-cache, no-transform",
+    connection: "keep-alive",
+  });
+  res.write(": ok\n\n");
+  const send = (): void => {
+    const payload = JSON.stringify({
+      downloads: runtime.queue.getItems().map(serializeDownload),
+      seeds: runtime.queue.getSeeds().map(serializeSeed),
+    });
+    res.write(`event: update\ndata: ${payload}\n\n`);
+  };
+  send();
+  const onUpdate = (): void => send();
+  runtime.queue.on("update", onUpdate);
+  const heartbeat = setInterval(() => {
+    res.write(": ping\n\n");
+  }, 15_000);
+  const cleanup = (): void => {
+    clearInterval(heartbeat);
+    runtime.queue.off("update", onUpdate);
+  };
+  req.on("close", cleanup);
+  res.on("close", cleanup);
+}
+
 async function handleApiRoute(
   req: IncomingMessage,
   res: ServerResponse,
@@ -244,36 +841,23 @@ async function handleApiRoute(
 ): Promise<boolean> {
   if (!requireApiAuth(req, res)) return true;
 
-  if (method === "GET" && url.pathname === "/api/search") {
-    const q = url.searchParams.get("q") ?? "";
-    sendJson(res, 200, await searchAll(q));
+  if (shouldRateLimit(method, url.pathname) && !checkRateLimit(clientRateKey(req))) {
+    sendJson(res, 429, { error: "rate limit exceeded" });
     return true;
   }
 
-  if (method === "GET" && url.pathname === "/api/downloads") {
-    sendJson(res, 200, { items: runtime.queue.getItems().map(serializeDownload) });
+  if (method === "GET" && url.pathname === "/api/events") {
+    handleSseEvents(req, res, runtime);
     return true;
   }
 
-  if (method === "GET" && url.pathname === "/api/network") {
-    sendJson(res, 200, await getNetworkStatus());
+  if (method === "GET") return handleApiGet(res, runtime, url);
+  if (method === "DELETE") return handleApiDelete(res, runtime, url.pathname);
+  if (method === "POST") return handleApiPost(req, res, runtime, url);
+  if (method === "PATCH" && url.pathname === "/api/config") {
+    await handlePatchConfig(req, res, runtime);
     return true;
   }
-
-  if (method === "POST" && url.pathname === "/api/network") {
-    await handlePostNetwork(req, res);
-    return true;
-  }
-
-  if (method === "POST" && url.pathname === "/api/downloads") {
-    await handlePostDownloads(req, res, runtime);
-    return true;
-  }
-
-  if (method === "POST" && handleDownloadAction(res, runtime, url.pathname)) {
-    return true;
-  }
-
   return false;
 }
 

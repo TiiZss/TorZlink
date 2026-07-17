@@ -13,11 +13,24 @@ const SOURCE_STYLE = {
   "x1337-tv": { tag: "1337", color: "#f6a55c" },
 };
 
+/** Mirror of src/sources/categories.ts */
+const CATEGORIES = [
+  { key: "all", label: "All" },
+  { key: "games", label: "Games", group: "Games" },
+  { key: "movies", label: "Movies", group: "Movies" },
+  { key: "tv", label: "TV", group: "TV" },
+  { key: "anime", label: "Anime", group: "Anime" },
+];
+
 const resultsEl = document.getElementById("results");
 const queueEl = document.getElementById("queue");
+const historyEl = document.getElementById("history");
+const seedsEl = document.getElementById("seeds");
 const searchStatus = document.getElementById("search-status");
 const searchForm = document.getElementById("search-form");
 const magnetForm = document.getElementById("magnet-form");
+const torrentForm = document.getElementById("torrent-form");
+const torrentFileInput = document.getElementById("torrent-file");
 const authGate = document.getElementById("auth-gate");
 const authForm = document.getElementById("auth-form");
 const mainLayout = document.getElementById("main");
@@ -25,7 +38,23 @@ const netSwitch = document.getElementById("net-switch");
 const netSwitchState = document.getElementById("net-switch-state");
 const netStatusEl = document.getElementById("net-status");
 const brandModeLabel = document.getElementById("brand-mode-label");
+const categoryTabs = document.getElementById("category-tabs");
+const hideDeadEl = document.getElementById("hide-dead");
+const sortFieldEl = document.getElementById("sort-field");
+const historyClearBtn = document.getElementById("history-clear");
+const configForm = document.getElementById("config-form");
+const configDownloadDir = document.getElementById("config-download-dir");
+const configTrackers = document.getElementById("config-trackers");
+const configSeedOnComplete = document.getElementById("config-seed-on-complete");
+const configStatus = document.getElementById("config-status");
+
 let currentNetMode = "direct";
+let lastDownloadToDir = sessionStorage.getItem("torzlink.downloadTo") || "";
+let configDownloadDirValue = "";
+let activeCategory = "all";
+let activeLibTab = "queue";
+let lastQuery = "";
+let configDirLocked = false;
 
 function sourceStyle(id) {
   return SOURCE_STYLE[id] || { tag: "•", color: "#6eb5e8" };
@@ -65,6 +94,13 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
+function formatEta(sec) {
+  if (!Number.isFinite(sec) || sec < 0) return "";
+  if (sec < 60) return `${Math.round(sec)}s`;
+  if (sec < 3600) return `${Math.round(sec / 60)}m`;
+  return `${Math.round(sec / 3600)}h`;
+}
+
 async function api(path, options) {
   const headers = { "content-type": "application/json", ...options?.headers };
   const token = getToken();
@@ -93,10 +129,152 @@ function setStatus(text) {
   searchStatus.textContent = `❯ ${text}`;
 }
 
+function setConfigStatus(text) {
+  if (!configStatus) return;
+  if (!text) {
+    configStatus.hidden = true;
+    configStatus.textContent = "";
+    return;
+  }
+  configStatus.hidden = false;
+  configStatus.textContent = `❯ ${text}`;
+}
+
+async function refreshConfig() {
+  if (!configDownloadDir || !configTrackers) return;
+  try {
+    const data = await api("/api/config");
+    configDownloadDir.value = data.downloadDir || "";
+    configDownloadDirValue = data.downloadDir || "";
+    configTrackers.value = Array.isArray(data.trackers) ? data.trackers.join("\n") : "";
+    if (configSeedOnComplete) configSeedOnComplete.checked = data.seedOnComplete !== false;
+    configDirLocked = Boolean(data.downloadDirLocked);
+    configDownloadDir.disabled = configDirLocked;
+    configDownloadDir.title = configDirLocked
+      ? "Bloqueado por TORZLINK_DOWNLOAD_DIR"
+      : "";
+  } catch {
+    /* auth gate / offline */
+  }
+}
+
 function showAuth(needed) {
   if (!authGate || !mainLayout) return;
   authGate.hidden = !needed;
   mainLayout.hidden = needed;
+}
+
+function paintCategoryTabs() {
+  if (!categoryTabs) return;
+  categoryTabs.innerHTML = CATEGORIES.map((c) => {
+    const active = c.key === activeCategory ? " is-active" : "";
+    return `<button type="button" class="cat-tab${active}" role="tab" aria-selected="${
+      c.key === activeCategory ? "true" : "false"
+    }" data-category="${escapeHtml(c.key)}">${escapeHtml(c.label)}</button>`;
+  }).join("");
+}
+
+function searchQueryParams(q) {
+  const params = new URLSearchParams({ q });
+  const cat = CATEGORIES.find((c) => c.key === activeCategory);
+  if (cat?.group) params.set("group", cat.group);
+  if (hideDeadEl?.checked) params.set("hideDead", "1");
+  const sort = sortFieldEl?.value;
+  if (sort) params.set("sort", sort);
+  return params;
+}
+
+function renderResults(results) {
+  if (!results.length) {
+    resultsEl.innerHTML = `<li class="empty">· sin resultados</li>`;
+    return;
+  }
+  resultsEl.innerHTML = results
+    .map((r) => {
+      const ss = sourceStyle(r.source);
+      const payload = encodeURIComponent(
+        JSON.stringify({
+          id: r.infoHash,
+          name: r.name,
+          magnet: r.magnet,
+          source: r.source,
+          sizeBytes: r.sizeBytes,
+        }),
+      );
+      const copyPayload = encodeURIComponent(
+        JSON.stringify({
+          name: r.name,
+          magnet: r.magnet,
+          infoHash: r.infoHash,
+        }),
+      );
+      return `
+      <li class="card card--result">
+        <div class="card-title"><span class="pointer">❯</span>${escapeHtml(r.name)}</div>
+        <div class="meta">
+          <span class="badge src" style="--src:${ss.color}">${escapeHtml(ss.tag)}</span>
+          <span>${formatBytes(r.sizeBytes)}</span>
+          <span class="seeds">↑${r.seeders}</span>
+          <span class="leech">↓${r.leechers}</span>
+        </div>
+        <div class="actions">
+          <button type="button" class="secondary" data-copy="${copyPayload}">Copiar</button>
+          <button type="button" class="secondary" data-download-to="${payload}">A carpeta…</button>
+          <button type="button" data-download="${payload}">Descargar</button>
+        </div>
+      </li>`;
+    })
+    .join("");
+}
+
+function rememberDownloadToDir(dir) {
+  if (!dir) return;
+  lastDownloadToDir = dir;
+  try {
+    sessionStorage.setItem("torzlink.downloadTo", dir);
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Prompt for per-item folder (TUI "download to"). Empty → default download dir. */
+function promptDownloadToDir() {
+  const hint = lastDownloadToDir || configDownloadDirValue || "";
+  const raw = window.prompt(
+    "Carpeta de descarga (vacío = carpeta por defecto; relativa = bajo esa carpeta):",
+    hint,
+  );
+  if (raw === null) return null; // cancelled
+  return raw.trim();
+}
+
+async function enqueueDownload(payload, { askDir = false } = {}) {
+  const body = { ...payload };
+  if (askDir) {
+    const dir = promptDownloadToDir();
+    if (dir === null) return false;
+    if (dir) body.dir = dir;
+  }
+  const data = await api("/api/downloads", { method: "POST", body: JSON.stringify(body) });
+  if (data.dir) rememberDownloadToDir(data.dir);
+  return true;
+}
+
+async function runSearch(q) {
+  if (!q) return;
+  lastQuery = q;
+  setStatus("buscando…");
+  resultsEl.innerHTML = "";
+  try {
+    const data = await api(`/api/search?${searchQueryParams(q)}`);
+    const errN = data.errors?.length || 0;
+    setStatus(
+      `${data.results.length} resultados` + (errN ? ` · ${errN} fuente(s) con error` : ""),
+    );
+    renderResults(data.results || []);
+  } catch (err) {
+    setStatus(err.message || "error de búsqueda");
+  }
 }
 
 async function bootAuth() {
@@ -135,6 +313,18 @@ function paintNetSwitch(vpn) {
   }
 }
 
+let netPollTimer = null;
+let netPollAttempts = 0;
+let netSwitchBusy = false;
+
+function stopNetPoll() {
+  if (netPollTimer) {
+    clearInterval(netPollTimer);
+    netPollTimer = null;
+  }
+  netPollAttempts = 0;
+}
+
 function paintNetStatus(status) {
   if (!netStatusEl) return;
   if (status.hint) {
@@ -158,18 +348,48 @@ function paintNetwork(status) {
   currentNetMode = mode;
   paintNetSwitch(mode === "vpn");
   paintNetStatus(status);
+  if (netSwitch) {
+    netSwitch.disabled = netSwitchBusy || Boolean(status.pending);
+  }
 }
 
 async function refreshNetwork() {
   try {
     const status = await api("/api/network");
     paintNetwork(status);
+    return status;
   } catch {
-    /* auth gate / offline */
+    /* auth gate / offline — during recreate the API may be briefly down */
+    return null;
   }
 }
 
+function startNetPoll() {
+  stopNetPoll();
+  netSwitchBusy = true;
+  if (netSwitch) netSwitch.disabled = true;
+  netPollTimer = setInterval(() => {
+    netPollAttempts += 1;
+    void (async () => {
+      const status = await refreshNetwork();
+      if (status?.applied || netPollAttempts >= 30) {
+        stopNetPoll();
+        netSwitchBusy = false;
+        if (netSwitch) netSwitch.disabled = false;
+        if (status && !status.applied && netStatusEl) {
+          netStatusEl.hidden = false;
+          netStatusEl.textContent =
+            status.hint ||
+            `❯ timeout — runtime ${status.runtime}, preferencia ${status.desired}. Reintenta.`;
+          netStatusEl.classList.remove("ok");
+        }
+      }
+    })();
+  }, 2000);
+}
+
 async function setNetworkMode(mode) {
+  netSwitchBusy = true;
   if (netSwitch) netSwitch.disabled = true;
   try {
     const status = await api("/api/network", {
@@ -177,20 +397,65 @@ async function setNetworkMode(mode) {
       body: JSON.stringify({ mode }),
     });
     paintNetwork(status);
+    if (status.pending || (status.switchable && !status.applied)) {
+      startNetPoll();
+    } else {
+      netSwitchBusy = false;
+      if (netSwitch) netSwitch.disabled = false;
+    }
   } catch (err) {
+    netSwitchBusy = false;
     paintNetwork({ desired: currentNetMode, runtime: currentNetMode, applied: true });
     if (netStatusEl) {
       netStatusEl.hidden = false;
       netStatusEl.textContent = `❯ ${err.message || "no se pudo cambiar el modo"}`;
       netStatusEl.classList.remove("ok");
     }
-  } finally {
     if (netSwitch) netSwitch.disabled = false;
   }
 }
 
+function setLibTab(tab) {
+  activeLibTab = tab;
+  document.querySelectorAll("[data-lib-tab]").forEach((btn) => {
+    const on = btn.dataset.libTab === tab;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  document.querySelectorAll("[data-lib-pane]").forEach((pane) => {
+    pane.hidden = pane.dataset.libPane !== tab;
+  });
+  void refreshLibrary();
+}
+
+async function refreshLibrary() {
+  if (activeLibTab === "queue") await refreshQueue();
+  else if (activeLibTab === "history") await refreshHistory();
+  else await refreshSeeds();
+}
+
 netSwitch?.addEventListener("click", () => {
   void setNetworkMode(currentNetMode === "vpn" ? "direct" : "vpn");
+});
+
+categoryTabs?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-category]");
+  if (!btn) return;
+  activeCategory = btn.dataset.category || "all";
+  paintCategoryTabs();
+  if (lastQuery) void runSearch(lastQuery);
+});
+
+hideDeadEl?.addEventListener("change", () => {
+  if (lastQuery) void runSearch(lastQuery);
+});
+
+sortFieldEl?.addEventListener("change", () => {
+  if (lastQuery) void runSearch(lastQuery);
+});
+
+document.querySelectorAll("[data-lib-tab]").forEach((btn) => {
+  btn.addEventListener("click", () => setLibTab(btn.dataset.libTab || "queue"));
 });
 
 authForm?.addEventListener("submit", async (e) => {
@@ -202,7 +467,8 @@ authForm?.addEventListener("submit", async (e) => {
     await api("/api/downloads");
     showAuth(false);
     await refreshNetwork();
-    await refreshQueue();
+    await refreshConfig();
+    await refreshLibrary();
   } catch (err) {
     alert(err.message || "Token inválido");
   }
@@ -213,57 +479,61 @@ searchForm.addEventListener("submit", async (e) => {
   const rawQ = new FormData(searchForm).get("q");
   const q = typeof rawQ === "string" ? rawQ.trim() : "";
   if (!q) return;
-  setStatus("buscando…");
-  resultsEl.innerHTML = "";
-  try {
-    const data = await api(`/api/search?q=${encodeURIComponent(q)}`);
-    const errN = data.errors?.length || 0;
-    setStatus(
-      `${data.results.length} resultados` + (errN ? ` · ${errN} fuente(s) con error` : ""),
-    );
-    if (!data.results.length) {
-      resultsEl.innerHTML = `<li class="empty">· sin resultados</li>`;
-      return;
-    }
-    resultsEl.innerHTML = data.results
-      .map((r) => {
-        const ss = sourceStyle(r.source);
-        const payload = encodeURIComponent(
-          JSON.stringify({
-            id: r.infoHash,
-            name: r.name,
-            magnet: r.magnet,
-            source: r.source,
-            sizeBytes: r.sizeBytes,
-          }),
-        );
-        return `
-      <li class="card card--result">
-        <div class="card-title"><span class="pointer">❯</span>${escapeHtml(r.name)}</div>
-        <div class="meta">
-          <span class="badge src" style="--src:${ss.color}">${escapeHtml(ss.tag)}</span>
-          <span>${formatBytes(r.sizeBytes)}</span>
-          <span class="seeds">↑${r.seeders}</span>
-          <span class="leech">↓${r.leechers}</span>
-        </div>
-        <div class="actions">
-          <button type="button" data-download="${payload}">Descargar</button>
-        </div>
-      </li>`;
-      })
-      .join("");
-  } catch (err) {
-    setStatus(err.message || "error de búsqueda");
-  }
+  await runSearch(q);
 });
 
 resultsEl.addEventListener("click", async (e) => {
+  const copyBtn = e.target.closest("[data-copy]");
+  if (copyBtn) {
+    try {
+      const payload = JSON.parse(decodeURIComponent(copyBtn.dataset.copy || ""));
+      copyBtn.disabled = true;
+      try {
+        await navigator.clipboard.writeText(payload.magnet);
+      } catch {
+        /* server still saves / notifies */
+      }
+      const data = await api("/api/copy-magnet", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      copyBtn.textContent = data.savedPath ? "guardado" : "copiado";
+      setTimeout(() => {
+        copyBtn.textContent = "Copiar";
+        copyBtn.disabled = false;
+      }, 1600);
+    } catch (err) {
+      alert(err.message || "No se pudo copiar");
+      copyBtn.disabled = false;
+    }
+    return;
+  }
+
+  const downloadToBtn = e.target.closest("[data-download-to]");
+  if (downloadToBtn) {
+    try {
+      const payload = JSON.parse(decodeURIComponent(downloadToBtn.dataset.downloadTo || ""));
+      downloadToBtn.disabled = true;
+      const ok = await enqueueDownload(payload, { askDir: true });
+      if (ok) {
+        downloadToBtn.textContent = "en cola";
+        await refreshQueue();
+      } else {
+        downloadToBtn.disabled = false;
+      }
+    } catch (err) {
+      alert(err.message || "No se pudo añadir");
+      downloadToBtn.disabled = false;
+    }
+    return;
+  }
+
   const btn = e.target.closest("[data-download]");
   if (!btn) return;
   try {
     const payload = JSON.parse(decodeURIComponent(btn.dataset.download || ""));
     btn.disabled = true;
-    await api("/api/downloads", { method: "POST", body: JSON.stringify(payload) });
+    await enqueueDownload(payload);
     btn.textContent = "en cola";
     await refreshQueue();
   } catch (err) {
@@ -278,11 +548,54 @@ magnetForm.addEventListener("submit", async (e) => {
   const input = typeof rawMagnet === "string" ? rawMagnet.trim() : "";
   if (!input) return;
   try {
-    await api("/api/downloads", { method: "POST", body: JSON.stringify({ input }) });
+    const askDir = e.submitter?.dataset?.askDir === "1" || e.shiftKey;
+    const ok = await enqueueDownload({ input }, { askDir });
+    if (!ok) return;
     magnetForm.reset();
+    setLibTab("queue");
     await refreshQueue();
   } catch (err) {
     alert(err.message || "Magnet inválido");
+  }
+});
+
+torrentForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const file = torrentFileInput?.files?.[0];
+  if (!file) {
+    alert("Elige un archivo .torrent");
+    return;
+  }
+  try {
+    const askDir = e.submitter?.dataset?.askDir === "1" || e.shiftKey;
+    let dirQuery = "";
+    if (askDir) {
+      const dir = promptDownloadToDir();
+      if (dir === null) return;
+      if (dir) dirQuery = `?dir=${encodeURIComponent(dir)}`;
+    }
+    const headers = {};
+    const token = getToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+    headers["content-type"] = "application/x-bittorrent";
+    const res = await fetch(`/api/torrent${dirQuery}`, {
+      method: "POST",
+      headers,
+      body: file,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) {
+      setToken("");
+      showAuth(true);
+      throw new Error("Token requerido o inválido");
+    }
+    if (!res.ok) throw new Error(data.error || res.statusText || "upload failed");
+    if (data.dir) rememberDownloadToDir(data.dir);
+    torrentForm.reset();
+    setLibTab("queue");
+    await refreshQueue();
+  } catch (err) {
+    alert(err.message || "Torrent inválido");
   }
 });
 
@@ -302,6 +615,70 @@ queueEl.addEventListener("click", async (e) => {
   }
 });
 
+historyEl?.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-history-action]");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.historyAction;
+  try {
+    if (action === "remove") {
+      await api(`/api/history/${encodeURIComponent(id)}`, { method: "DELETE" });
+    } else if (action === "redownload") {
+      await api(`/api/history/${encodeURIComponent(id)}/redownload`, {
+        method: "POST",
+        body: "{}",
+      });
+      setLibTab("queue");
+    } else if (action === "copy") {
+      const payload = JSON.parse(decodeURIComponent(btn.dataset.copy || ""));
+      try {
+        await navigator.clipboard.writeText(payload.magnet);
+      } catch {
+        /* server fallback */
+      }
+      await api("/api/copy-magnet", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      btn.textContent = "copiado";
+      setTimeout(() => {
+        btn.textContent = "Copiar";
+      }, 1200);
+      return;
+    }
+    await refreshHistory();
+  } catch (err) {
+    alert(err.message || "Acción fallida");
+  }
+});
+
+seedsEl?.addEventListener("click", async (e) => {
+  const btn = e.target.closest("[data-seed-action]");
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.seedAction;
+  try {
+    await api(`/api/seeds/${encodeURIComponent(id)}/${action}`, {
+      method: "POST",
+      body: "{}",
+    });
+    await refreshSeeds();
+  } catch (err) {
+    alert(err.message || "Acción fallida");
+  }
+});
+
+historyClearBtn?.addEventListener("click", async () => {
+  if (!confirm("¿Vaciar todo el historial y seeds asociados?")) return;
+  try {
+    await api("/api/history", { method: "DELETE" });
+    await refreshHistory();
+    await refreshSeeds();
+  } catch (err) {
+    alert(err.message || "No se pudo vaciar");
+  }
+});
+
 async function refreshQueue() {
   try {
     const data = await api("/api/downloads");
@@ -316,6 +693,7 @@ async function refreshQueue() {
         const pauseLabel = it.status === "paused" ? "Reanudar" : "Pausar";
         const pauseAction = it.status === "paused" ? "resume" : "pause";
         const canPause = it.status === "downloading" || it.status === "paused";
+        const eta = formatEta(it.eta);
         let icon = "↓";
         if (it.status === "completed") icon = "✓";
         else if (it.status === "failed") icon = "✗";
@@ -329,6 +707,8 @@ async function refreshQueue() {
             <span>${formatBytes(it.downloadedBytes)} / ${formatBytes(it.totalBytes)}</span>
             <span>${formatSpeed(it.speed)}</span>
             <span>• ${it.peers || 0}</span>
+            ${eta ? `<span>ETA ${eta}</span>` : ""}
+            ${it.dir ? `<span class="dir" title="${escapeHtml(it.dir)}">${escapeHtml(it.dir)}</span>` : ""}
           </div>
           <div class="bar"><span style="width:${pct}%"></span></div>
           <div class="actions">
@@ -347,9 +727,156 @@ async function refreshQueue() {
   }
 }
 
+async function refreshHistory() {
+  if (!historyEl) return;
+  try {
+    const data = await api("/api/history");
+    const items = data.items || [];
+    if (!items.length) {
+      historyEl.innerHTML = `<li class="empty">· historial vacío</li>`;
+      return;
+    }
+    historyEl.innerHTML = items
+      .map((it) => {
+        const ss = sourceStyle(it.source);
+        const when = it.completedAt ? new Date(it.completedAt).toLocaleString() : "";
+        const copyPayload = encodeURIComponent(
+          JSON.stringify({
+            name: it.name,
+            magnet: it.magnet || "",
+            infoHash: it.id,
+          }),
+        );
+        return `
+        <li class="card">
+          <div class="card-title"><span class="pointer">✓</span>${escapeHtml(it.name)}</div>
+          <div class="meta">
+            <span class="badge src" style="--src:${ss.color}">${escapeHtml(ss.tag)}</span>
+            <span>${formatBytes(it.sizeBytes)}</span>
+            <span>${escapeHtml(when)}</span>
+          </div>
+          <div class="actions">
+            <button type="button" class="secondary" data-history-action="copy" data-copy="${copyPayload}">Copiar</button>
+            <button type="button" data-history-action="redownload" data-id="${escapeHtml(it.id)}">Re-descargar</button>
+            <button type="button" class="danger" data-history-action="remove" data-id="${escapeHtml(it.id)}">Quitar</button>
+          </div>
+        </li>`;
+      })
+      .join("");
+  } catch (err) {
+    historyEl.innerHTML = `<li class="empty">✗ ${escapeHtml(err.message || "error de historial")}</li>`;
+  }
+}
+
+async function refreshSeeds() {
+  if (!seedsEl) return;
+  try {
+    const data = await api("/api/seeds");
+    const items = data.items || [];
+    if (!items.length) {
+      seedsEl.innerHTML = `<li class="empty">· sin seeds activos</li>`;
+      return;
+    }
+    seedsEl.innerHTML = items
+      .map((it) => {
+        const pauseLabel = it.status === "seeding" ? "Pausar" : "Reanudar";
+        const pauseAction = it.status === "seeding" ? "pause" : "resume";
+        const canToggle = it.status === "seeding" || it.status === "paused";
+        return `
+        <li class="card">
+          <div class="card-title"><span class="pointer">↑</span>${escapeHtml(it.name)}</div>
+          <div class="meta">
+            <span class="badge ${escapeHtml(it.status)}">${escapeHtml(it.status)}</span>
+            <span>${formatBytes(it.sizeBytes)}</span>
+            <span>${formatSpeed(it.uploadSpeed)} ↑</span>
+            <span>• ${it.peers || 0}</span>
+          </div>
+          <div class="actions">
+            ${
+              canToggle
+                ? `<button type="button" class="secondary" data-seed-action="${pauseAction}" data-id="${escapeHtml(it.id)}">${pauseLabel}</button>`
+                : ""
+            }
+          </div>
+        </li>`;
+      })
+      .join("");
+  } catch (err) {
+    seedsEl.innerHTML = `<li class="empty">✗ ${escapeHtml(err.message || "error de seeds")}</li>`;
+  }
+}
+
+configForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!configDownloadDir || !configTrackers) return;
+  setConfigStatus("guardando…");
+  try {
+    const body = {
+      trackers: configTrackers.value,
+      seedOnComplete: configSeedOnComplete ? Boolean(configSeedOnComplete.checked) : true,
+    };
+    if (!configDirLocked) body.downloadDir = configDownloadDir.value;
+    const data = await api("/api/config", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    configDownloadDir.value = data.downloadDir || "";
+    configDownloadDirValue = data.downloadDir || "";
+    configTrackers.value = Array.isArray(data.trackers) ? data.trackers.join("\n") : "";
+    if (configSeedOnComplete) configSeedOnComplete.checked = data.seedOnComplete !== false;
+    configDirLocked = Boolean(data.downloadDirLocked);
+    configDownloadDir.disabled = configDirLocked;
+    let msg = "config guardada";
+    if (Array.isArray(data.unknownTrackerHosts) && data.unknownTrackerHosts.length) {
+      msg += ` · hosts desconocidos: ${data.unknownTrackerHosts.join(", ")}`;
+    }
+    if (configDirLocked) msg += " · dir fijado por env";
+    setConfigStatus(msg);
+  } catch (err) {
+    setConfigStatus(err.message || "error al guardar");
+  }
+});
+
+function startLiveUpdates() {
+  const token = getToken();
+  const url = token
+    ? `/api/events?access_token=${encodeURIComponent(token)}`
+    : "/api/events";
+  // EventSource cannot set Authorization; fall back to poll when token is required.
+  if (token || typeof EventSource === "undefined") {
+    setInterval(() => {
+      if (activeLibTab === "queue") void refreshQueue();
+      else if (activeLibTab === "seeding") void refreshSeeds();
+    }, 1000);
+    return;
+  }
+  try {
+    const es = new EventSource(url);
+    es.addEventListener("update", () => {
+      if (activeLibTab === "queue") void refreshQueue();
+      else if (activeLibTab === "seeding") void refreshSeeds();
+    });
+    es.onerror = () => {
+      es.close();
+      setInterval(() => {
+        if (activeLibTab === "queue") void refreshQueue();
+        else if (activeLibTab === "seeding") void refreshSeeds();
+      }, 1000);
+    };
+  } catch {
+    setInterval(() => {
+      if (activeLibTab === "queue") void refreshQueue();
+      else if (activeLibTab === "seeding") void refreshSeeds();
+    }, 1000);
+  }
+}
+
+paintCategoryTabs();
+
 const ok = await bootAuth();
 if (ok) {
   await refreshNetwork();
-  await refreshQueue();
-  setInterval(refreshQueue, 1000);
+  await refreshConfig();
+  await refreshLibrary();
+  startLiveUpdates();
 }

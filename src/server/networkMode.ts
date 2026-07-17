@@ -68,21 +68,73 @@ async function patchEnvFile(file: string, mode: NetworkMode): Promise<boolean> {
   }
 }
 
-function runSwitchCmd(mode: NetworkMode): Promise<{ ok: boolean; detail?: string }> {
+function switchCmdConfigured(): boolean {
+  return Boolean(process.env.TORZLINK_NETWORK_SWITCH_CMD?.trim());
+}
+
+/**
+ * Start the host/container switch helper without waiting for recreate.
+ * Waiting would kill the HTTP response when this process is the one being replaced.
+ * Passes TORZLINK_PREV_NETWORK_MODE so the helper can roll back after the server
+ * (or a prior run) already patched .env to the target mode.
+ */
+function startSwitchCmd(
+  mode: NetworkMode,
+  prevMode: NetworkMode,
+): Promise<{ ok: boolean; detail?: string }> {
   const cmd = process.env.TORZLINK_NETWORK_SWITCH_CMD?.trim();
   if (!cmd) return Promise.resolve({ ok: false });
 
   return new Promise((resolve) => {
-    const child = spawn(cmd, [mode], { shell: true, env: process.env });
-    let stderr = "";
-    child.stderr?.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-    child.on("error", (err) => resolve({ ok: false, detail: err.message }));
-    child.on("close", (code) => {
-      if (code === 0) resolve({ ok: true });
-      else resolve({ ok: false, detail: stderr.trim() || `exit ${code ?? "?"}` });
-    });
+    try {
+      // Prefer argv form when SWITCH_CMD is "sh /path/script.sh" (Alpine has no bash).
+      const parts = cmd.match(/(?:[^\s"]+|"[^"]*")+/g)?.map((p) => p.replace(/^"|"$/g, "")) ?? [cmd];
+      const file = parts[0] ?? cmd;
+      const baseArgs = parts.slice(1);
+      const child = spawn(file, [...baseArgs, mode], {
+        shell: false,
+        env: { ...process.env, TORZLINK_PREV_NETWORK_MODE: prevMode },
+        detached: true,
+        stdio: "ignore",
+      });
+      let settled = false;
+      const done = (result: { ok: boolean; detail?: string }) => {
+        if (settled) return;
+        settled = true;
+        try {
+          child.unref();
+        } catch {
+          /* ignore */
+        }
+        resolve(result);
+      };
+      child.on("error", (err) => done({ ok: false, detail: err.message }));
+      child.on("exit", (code, signal) => {
+        // Handoff script exits 0 after `docker run -d`; non-zero = failed to schedule.
+        if (code === 0) {
+          done({ ok: true });
+          return;
+        }
+        if (code === null && !signal) return;
+        done({
+          ok: false,
+          detail: signal ? `killed by ${signal}` : `exited ${code}`,
+        });
+      });
+      // Grace period: catch slow early failures. If still running (rare for handoff),
+      // treat as scheduled — do not claim success at 250ms while exit is pending.
+      setTimeout(() => {
+        if (settled) return;
+        if (typeof child.exitCode === "number") {
+          if (child.exitCode === 0) done({ ok: true });
+          else done({ ok: false, detail: `exited ${child.exitCode}` });
+          return;
+        }
+        done({ ok: true });
+      }, 2000);
+    } catch (err) {
+      resolve({ ok: false, detail: err instanceof Error ? err.message : String(err) });
+    }
   });
 }
 
@@ -91,6 +143,7 @@ export type NetworkStatus = {
   desired: NetworkMode;
   applied: boolean;
   switchable: boolean;
+  pending: boolean;
   envPatched: boolean;
   hint?: string;
 };
@@ -98,45 +151,70 @@ export type NetworkStatus = {
 export async function getNetworkStatus(): Promise<NetworkStatus> {
   const runtime = runtimeNetworkMode();
   const desired = (await readDesiredMode()) ?? runtime;
-  const switchable = Boolean(process.env.TORZLINK_NETWORK_SWITCH_CMD?.trim());
+  const switchable = switchCmdConfigured();
+  const applied = desired === runtime;
+  let hint: string | undefined;
+  if (!applied && switchable) {
+    hint =
+      "Preferencia " +
+      desired +
+      " ≠ runtime " +
+      runtime +
+      ". Reintenta el switch en la UI o ejecuta deploy-nas.sh switch.";
+  } else if (!applied && !switchable) {
+    hint =
+      "Preferencia guardada. Cablea TORZLINK_NETWORK_SWITCH_CMD (compose NAS) o ejecuta deploy-nas.sh switch.";
+  }
   return {
     runtime,
     desired,
-    applied: desired === runtime,
+    applied,
     switchable,
+    // Only POST marks pending while recreate is in flight; GET must not lock the toggle.
+    pending: false,
     envPatched: false,
+    hint,
   };
 }
 
 export async function setNetworkMode(mode: NetworkMode): Promise<NetworkStatus> {
+  const prevRuntime = runtimeNetworkMode();
   await writeDesiredMode(mode);
 
   const envFile = process.env.TORZLINK_DEPLOY_ENV_FILE?.trim();
   const envPatched = envFile ? await patchEnvFile(envFile, mode) : false;
 
-  const switched = await runSwitchCmd(mode);
+  const switched = await startSwitchCmd(mode, prevRuntime);
   const runtime = runtimeNetworkMode();
-  const switchable = Boolean(process.env.TORZLINK_NETWORK_SWITCH_CMD?.trim());
+  const switchable = switchCmdConfigured();
+  const applied = mode === runtime;
 
   let hint: string | undefined;
   if (switched.ok) {
-    hint = "Switch ejecutado. Si el contenedor se recrea, recarga en unos segundos.";
+    hint =
+      "Recreando contenedor en modo " +
+      mode +
+      "… la página se reconectará en unos segundos (las descargas activas se interrumpen).";
   } else if (switched.detail) {
-    hint = `Switch falló: ${switched.detail}`;
+    hint = `Switch falló al arrancar: ${switched.detail}`;
   } else if (envPatched) {
-    hint = "Modo guardado en .env del NAS. Ejecuta deploy-nas.sh up (o redeploy) para aplicar.";
-  } else if (mode !== runtime) {
+    hint =
+      "Modo guardado en .env del NAS. Sin TORZLINK_NETWORK_SWITCH_CMD: ejecuta deploy-nas.sh switch " +
+      mode +
+      ".";
+  } else if (!applied) {
     hint =
       "Preferencia guardada. Para aplicar: TORZLINK_NETWORK_MODE=" +
       mode +
-      " y redeploy (deploy-from-dev / deploy-nas.sh up).";
+      " y redeploy, o cablea TORZLINK_NETWORK_SWITCH_CMD.";
   }
 
   return {
     runtime,
     desired: mode,
-    applied: switched.ok || mode === runtime,
+    applied,
     switchable,
+    pending: switched.ok && !applied,
     envPatched,
     hint,
   };
