@@ -48,6 +48,8 @@ const configTrackers = document.getElementById("config-trackers");
 const configStatus = document.getElementById("config-status");
 
 let currentNetMode = "direct";
+let lastDownloadToDir = sessionStorage.getItem("torzlink.downloadTo") || "";
+let configDownloadDirValue = "";
 let activeCategory = "all";
 let activeLibTab = "queue";
 let lastQuery = "";
@@ -142,6 +144,7 @@ async function refreshConfig() {
   try {
     const data = await api("/api/config");
     configDownloadDir.value = data.downloadDir || "";
+    configDownloadDirValue = data.downloadDir || "";
     configTrackers.value = Array.isArray(data.trackers) ? data.trackers.join("\n") : "";
     configDirLocked = Boolean(data.downloadDirLocked);
     configDownloadDir.disabled = configDirLocked;
@@ -214,11 +217,45 @@ function renderResults(results) {
         </div>
         <div class="actions">
           <button type="button" class="secondary" data-copy="${copyPayload}">Copiar</button>
+          <button type="button" class="secondary" data-download-to="${payload}">A carpeta…</button>
           <button type="button" data-download="${payload}">Descargar</button>
         </div>
       </li>`;
     })
     .join("");
+}
+
+function rememberDownloadToDir(dir) {
+  if (!dir) return;
+  lastDownloadToDir = dir;
+  try {
+    sessionStorage.setItem("torzlink.downloadTo", dir);
+  } catch {
+    /* private mode */
+  }
+}
+
+/** Prompt for per-item folder (TUI "download to"). Empty → default download dir. */
+function promptDownloadToDir() {
+  const hint = lastDownloadToDir || configDownloadDirValue || "";
+  const raw = window.prompt(
+    "Carpeta de descarga (vacío = carpeta por defecto; relativa = bajo esa carpeta):",
+    hint,
+  );
+  if (raw === null) return null; // cancelled
+  return raw.trim();
+}
+
+async function enqueueDownload(payload, { askDir = false } = {}) {
+  const body = { ...payload };
+  if (askDir) {
+    const dir = promptDownloadToDir();
+    if (dir === null) return false;
+    if (dir) body.dir = dir;
+  }
+  const data = await api("/api/downloads", { method: "POST", body: JSON.stringify(body) });
+  if (data.dir) rememberDownloadToDir(data.dir);
+  return true;
 }
 
 async function runSearch(q) {
@@ -470,12 +507,31 @@ resultsEl.addEventListener("click", async (e) => {
     return;
   }
 
+  const downloadToBtn = e.target.closest("[data-download-to]");
+  if (downloadToBtn) {
+    try {
+      const payload = JSON.parse(decodeURIComponent(downloadToBtn.dataset.downloadTo || ""));
+      downloadToBtn.disabled = true;
+      const ok = await enqueueDownload(payload, { askDir: true });
+      if (ok) {
+        downloadToBtn.textContent = "en cola";
+        await refreshQueue();
+      } else {
+        downloadToBtn.disabled = false;
+      }
+    } catch (err) {
+      alert(err.message || "No se pudo añadir");
+      downloadToBtn.disabled = false;
+    }
+    return;
+  }
+
   const btn = e.target.closest("[data-download]");
   if (!btn) return;
   try {
     const payload = JSON.parse(decodeURIComponent(btn.dataset.download || ""));
     btn.disabled = true;
-    await api("/api/downloads", { method: "POST", body: JSON.stringify(payload) });
+    await enqueueDownload(payload);
     btn.textContent = "en cola";
     await refreshQueue();
   } catch (err) {
@@ -490,7 +546,9 @@ magnetForm.addEventListener("submit", async (e) => {
   const input = typeof rawMagnet === "string" ? rawMagnet.trim() : "";
   if (!input) return;
   try {
-    await api("/api/downloads", { method: "POST", body: JSON.stringify({ input }) });
+    const askDir = e.submitter?.dataset?.askDir === "1" || e.shiftKey;
+    const ok = await enqueueDownload({ input }, { askDir });
+    if (!ok) return;
     magnetForm.reset();
     setLibTab("queue");
     await refreshQueue();
@@ -507,11 +565,18 @@ torrentForm?.addEventListener("submit", async (e) => {
     return;
   }
   try {
+    const askDir = e.submitter?.dataset?.askDir === "1" || e.shiftKey;
+    let dirQuery = "";
+    if (askDir) {
+      const dir = promptDownloadToDir();
+      if (dir === null) return;
+      if (dir) dirQuery = `?dir=${encodeURIComponent(dir)}`;
+    }
     const headers = {};
     const token = getToken();
     if (token) headers.Authorization = `Bearer ${token}`;
     headers["content-type"] = "application/x-bittorrent";
-    const res = await fetch("/api/torrent", {
+    const res = await fetch(`/api/torrent${dirQuery}`, {
       method: "POST",
       headers,
       body: file,
@@ -523,6 +588,7 @@ torrentForm?.addEventListener("submit", async (e) => {
       throw new Error("Token requerido o inválido");
     }
     if (!res.ok) throw new Error(data.error || res.statusText || "upload failed");
+    if (data.dir) rememberDownloadToDir(data.dir);
     torrentForm.reset();
     setLibTab("queue");
     await refreshQueue();
@@ -640,6 +706,7 @@ async function refreshQueue() {
             <span>${formatSpeed(it.speed)}</span>
             <span>• ${it.peers || 0}</span>
             ${eta ? `<span>ETA ${eta}</span>` : ""}
+            ${it.dir ? `<span class="dir" title="${escapeHtml(it.dir)}">${escapeHtml(it.dir)}</span>` : ""}
           </div>
           <div class="bar"><span style="width:${pct}%"></span></div>
           <div class="actions">
@@ -749,6 +816,7 @@ configForm?.addEventListener("submit", async (e) => {
       body: JSON.stringify(body),
     });
     configDownloadDir.value = data.downloadDir || "";
+    configDownloadDirValue = data.downloadDir || "";
     configTrackers.value = Array.isArray(data.trackers) ? data.trackers.join("\n") : "";
     configDirLocked = Boolean(data.downloadDirLocked);
     configDownloadDir.disabled = configDirLocked;

@@ -226,6 +226,53 @@ async function readJsonBody(
   }
 }
 
+async function resolvePerItemDownloadDir(
+  raw: unknown,
+  defaultDir: string,
+): Promise<PatchFieldResult> {
+  if (raw === undefined || raw === null) {
+    return { ok: true, value: defaultDir };
+  }
+  if (typeof raw !== "string") {
+    return { ok: false, status: 400, body: { error: "dir must be a string" } };
+  }
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return { ok: true, value: defaultDir };
+  }
+
+  let dir = normalizeDownloadDir(trimmed);
+  if (!dir) {
+    return { ok: false, status: 400, body: { error: "dir is empty" } };
+  }
+
+  // Relative paths land under the configured download dir (useful on NAS).
+  if (!path.isAbsolute(dir)) {
+    dir = path.join(defaultDir, dir);
+  }
+  dir = path.normalize(dir);
+
+  if (downloadDirLockedByEnv()) {
+    const root = path.resolve(defaultDir);
+    const resolved = path.resolve(dir);
+    const underRoot = resolved === root || resolved.startsWith(root + path.sep);
+    if (!underRoot) {
+      return {
+        ok: false,
+        status: 403,
+        body: { error: "dir must be under TORZLINK_DOWNLOAD_DIR" },
+      };
+    }
+  }
+
+  try {
+    await fs.mkdir(dir, { recursive: true });
+  } catch {
+    return { ok: false, status: 400, body: { error: "couldn't use dir" } };
+  }
+  return { ok: true, value: dir };
+}
+
 async function handlePostDownloads(
   req: IncomingMessage,
   res: ServerResponse,
@@ -251,10 +298,15 @@ async function handlePostDownloads(
     return;
   }
 
-  await fs.mkdir(runtime.config.downloadDir, { recursive: true }).catch(() => {});
-  runtime.queue.add(safe, runtime.config.downloadDir);
+  const resolved = await resolvePerItemDownloadDir(body.dir, runtime.config.downloadDir);
+  if (!resolved.ok) {
+    sendJson(res, resolved.status, resolved.body);
+    return;
+  }
+
+  runtime.queue.add(safe, resolved.value);
   runtime.queue.emit("web-added", safe);
-  sendJson(res, 201, { ok: true, id: safe.id });
+  sendJson(res, 201, { ok: true, id: safe.id, dir: resolved.value });
 }
 
 async function handlePostTorrent(
@@ -298,10 +350,20 @@ async function handlePostTorrent(
     return;
   }
 
-  await fs.mkdir(runtime.config.downloadDir, { recursive: true }).catch(() => {});
-  runtime.queue.add(safe, runtime.config.downloadDir);
+  const url = new URL(req.url || "/", "http://localhost");
+  const dirParam = url.searchParams.get("dir");
+  const resolved = await resolvePerItemDownloadDir(
+    dirParam && dirParam.length > 0 ? dirParam : undefined,
+    runtime.config.downloadDir,
+  );
+  if (!resolved.ok) {
+    sendJson(res, resolved.status, resolved.body);
+    return;
+  }
+
+  runtime.queue.add(safe, resolved.value);
   runtime.queue.emit("web-added", safe);
-  sendJson(res, 201, { ok: true, id: safe.id, name: safe.name });
+  sendJson(res, 201, { ok: true, id: safe.id, name: safe.name, dir: resolved.value });
 }
 
 async function handlePostNetwork(req: IncomingMessage, res: ServerResponse): Promise<void> {

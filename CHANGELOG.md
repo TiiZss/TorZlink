@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 
 - **CI** — pin `aquasecurity/trivy-action` to commit SHA for `v0.36.0` (tag `0.28.0` no longer resolves; prefer immutable pins after Trivy Action supply-chain incidents)
+- **CI Docker scan** — `load: true` so buildx publishes `torzlink:ci` to the local daemon for Trivy
+- **Tests / paths** — resolve `queueFile` / `historyFile` / etc. at call time so `TORZLINK_STATE_DIR` in tests isolates AppData (fixes macOS flaky HTTP tests)
 - **NAS VPN switch** — require `TORZLINK_SERVE_TOKEN` when `TORZLINK_NETWORK_SWITCH_CMD` is set; generate token in `deploy-nas.sh install`; do not lock UI toggle forever on GET mismatch; restore previous compose profile if `up` fails after `rm`
 - **Network switch spawn** — wait briefly for immediate spawn errors before reporting success
 
@@ -17,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **VPN ON/OFF without redeploy** — NAS compose wires `TORZLINK_NETWORK_SWITCH_CMD` to [`tools/torzlink-network-switch.sh`](tools/torzlink-network-switch.sh) (Docker socket + `DOCKER_GID`); web toggle starts a detached profile recreate and polls until runtime matches
 - Runtime image includes `docker-cli` / `docker-cli-compose` for the NAS network switch path
 - **Web `.torrent` upload** — `POST /api/torrent` (max 2MB) parses bytes → magnet → same queue as TUI; file input in the queue panel
+- **Web “download to…”** — optional `dir` on `POST /api/downloads` (and `?dir=` on `POST /api/torrent`); UI button “A carpeta…”; when `TORZLINK_DOWNLOAD_DIR` is set, only subdirs of that root are allowed
 
 ### Changed
 

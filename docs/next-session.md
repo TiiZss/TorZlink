@@ -1,6 +1,6 @@
 # Next session — TorZlink backlog
 
-Session wrap-up **2026-07-16**: VPN ON/OFF sin redeploy desplegado en NAS (`switchable=true`; runtime `direct`↔`container:gluetun` verificado). Pendiente: Traefik labels en Gluetun para UI en VPN; paridad web (download-to…, upload `.torrent`).
+Session wrap-up **2026-07-17**: CI PR #2 en verde; paths lazy + Trivy `load: true`; web **download-to…** (`dir` API + UI). Pendiente ops: Traefik labels en Gluetun para UI en VPN.
 
 ## Product invariant — Web ≡ TUI
 
@@ -11,7 +11,7 @@ Session wrap-up **2026-07-16**: VPN ON/OFF sin redeploy desplegado en NAS (`swit
 | # | Capacidad TUI | Estado web | Notas de implementación |
 | --- | --- | --- | --- |
 | 1 | Búsqueda multi-fuente + resultados | OK | Filtro categoría/group + hideDead + sort en `GET /api/search` |
-| 2 | Añadir a cola (magnet / infohash / resultado) | Parcial | OK básico; falta “download to…” (carpeta alternativa por ítem) |
+| 2 | Añadir a cola (magnet / infohash / resultado) | OK | Incluye “download to…” (`dir` / `?dir=`; jail bajo `TORZLINK_DOWNLOAD_DIR`) |
 | 3 | Cola activa: pause / resume / cancel + progreso | Parcial | OK + ETA en UI; falta open folder (evitar en web remota) |
 | 4 | **Downloads** (historial / recently downloaded) | OK | `GET/DELETE /api/history` + redownload; pestaña History |
 | 5 | **Seeding** (lista, pause/stop seed) | OK | `GET /api/seeds` + pause/resume/toggle; pestaña Seeding |
@@ -43,11 +43,10 @@ Session wrap-up **2026-07-16**: VPN ON/OFF sin redeploy desplegado en NAS (`swit
 | Priority | Area | Item | Notes |
 | --- | --- | --- | --- |
 | 1 | Ops | Traefik labels on Gluetun (vpn UI) | Switch aplica `network_mode:container:gluetun`; sin labels en Gluetun, `torzlink.lan` no responde en VPN |
-| 2 | Product | Web remaining parity | download-to… (`.torrent` upload OK) |
-| 3 | QA | Manual TUI download smoke test in Docker (Windows host) | Validate end-to-end on the primary dev machine |
-| 4 | Docs | Windows-specific Docker volume docs | `%cd%`, WSL2, Desktop bind-mount quirks |
-| 5 | Quality P2 | Zod schema for `config.json` | `downloadDir`, `trackers[]` validation at load |
-| 6 | Quality P2 | Scraper anti-corruption layer | Rebuild magnet from infoHash; no raw HTML passthrough |
+| 2 | QA | Manual TUI download smoke test in Docker (Windows host) | Validate end-to-end on the primary dev machine |
+| 3 | Docs | Windows-specific Docker volume docs | `%cd%`, WSL2, Desktop bind-mount quirks |
+| 4 | Quality P2 | Zod schema for `config.json` | `downloadDir`, `trackers[]` validation at load |
+| 5 | Quality P2 | Scraper anti-corruption layer | Rebuild magnet from infoHash; no raw HTML passthrough |
 
 ## Also on the board
 
