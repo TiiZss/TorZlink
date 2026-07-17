@@ -76,29 +76,40 @@ function switchCmdConfigured(): boolean {
  * Start the host/container switch helper without waiting for recreate.
  * Waiting would kill the HTTP response when this process is the one being replaced.
  */
-function startSwitchCmd(mode: NetworkMode): { ok: boolean; detail?: string } {
+function startSwitchCmd(mode: NetworkMode): Promise<{ ok: boolean; detail?: string }> {
   const cmd = process.env.TORZLINK_NETWORK_SWITCH_CMD?.trim();
-  if (!cmd) return { ok: false };
+  if (!cmd) return Promise.resolve({ ok: false });
 
-  try {
-    // Prefer argv form when SWITCH_CMD is "sh /path/script.sh" (Alpine has no bash).
-    const parts = cmd.match(/(?:[^\s"]+|"[^"]*")+/g)?.map((p) => p.replace(/^"|"$/g, "")) ?? [cmd];
-    const file = parts[0] ?? cmd;
-    const baseArgs = parts.slice(1);
-    const child = spawn(file, [...baseArgs, mode], {
-      shell: false,
-      env: process.env,
-      detached: true,
-      stdio: "ignore",
-    });
-    child.on("error", () => {
-      /* spawn failures after detach are best-effort; UI polls runtime */
-    });
-    child.unref();
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, detail: err instanceof Error ? err.message : String(err) };
-  }
+  return new Promise((resolve) => {
+    try {
+      // Prefer argv form when SWITCH_CMD is "sh /path/script.sh" (Alpine has no bash).
+      const parts = cmd.match(/(?:[^\s"]+|"[^"]*")+/g)?.map((p) => p.replace(/^"|"$/g, "")) ?? [cmd];
+      const file = parts[0] ?? cmd;
+      const baseArgs = parts.slice(1);
+      const child = spawn(file, [...baseArgs, mode], {
+        shell: false,
+        env: process.env,
+        detached: true,
+        stdio: "ignore",
+      });
+      let settled = false;
+      const done = (result: { ok: boolean; detail?: string }) => {
+        if (settled) return;
+        settled = true;
+        try {
+          child.unref();
+        } catch {
+          /* ignore */
+        }
+        resolve(result);
+      };
+      child.on("error", (err) => done({ ok: false, detail: err.message }));
+      // Catch immediate spawn failures; do not wait for recreate exit.
+      setTimeout(() => done({ ok: true }), 250);
+    } catch (err) {
+      resolve({ ok: false, detail: err instanceof Error ? err.message : String(err) });
+    }
+  });
 }
 
 export type NetworkStatus = {
@@ -118,7 +129,12 @@ export async function getNetworkStatus(): Promise<NetworkStatus> {
   const applied = desired === runtime;
   let hint: string | undefined;
   if (!applied && switchable) {
-    hint = "Cambio pendiente — el contenedor se está recreando o hace falta reintentar el switch.";
+    hint =
+      "Preferencia " +
+      desired +
+      " ≠ runtime " +
+      runtime +
+      ". Reintenta el switch en la UI o ejecuta deploy-nas.sh switch.";
   } else if (!applied && !switchable) {
     hint =
       "Preferencia guardada. Cablea TORZLINK_NETWORK_SWITCH_CMD (compose NAS) o ejecuta deploy-nas.sh switch.";
@@ -128,7 +144,8 @@ export async function getNetworkStatus(): Promise<NetworkStatus> {
     desired,
     applied,
     switchable,
-    pending: !applied && switchable,
+    // Only POST marks pending while recreate is in flight; GET must not lock the toggle.
+    pending: false,
     envPatched: false,
     hint,
   };
@@ -140,7 +157,7 @@ export async function setNetworkMode(mode: NetworkMode): Promise<NetworkStatus> 
   const envFile = process.env.TORZLINK_DEPLOY_ENV_FILE?.trim();
   const envPatched = envFile ? await patchEnvFile(envFile, mode) : false;
 
-  const switched = startSwitchCmd(mode);
+  const switched = await startSwitchCmd(mode);
   const runtime = runtimeNetworkMode();
   const switchable = switchCmdConfigured();
   const applied = mode === runtime;
