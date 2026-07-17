@@ -6,27 +6,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-### Fixed
+## [1.8.0] — 2026-07-17
 
-- **CI** — pin `aquasecurity/trivy-action` to commit SHA for `v0.36.0` (tag `0.28.0` no longer resolves; prefer immutable pins after Trivy Action supply-chain incidents)
-- **CI Docker scan** — `load: true` so buildx publishes `torzlink:ci` to the local daemon for Trivy
-- **Tests / paths** — resolve `queueFile` / `historyFile` / etc. at call time so `TORZLINK_STATE_DIR` in tests isolates AppData (fixes macOS flaky HTTP tests)
-- **NAS VPN switch** — require `TORZLINK_SERVE_TOKEN` when `TORZLINK_NETWORK_SWITCH_CMD` is set; generate token in `deploy-nas.sh install`; do not lock UI toggle forever on GET mismatch; restore previous compose profile if `up` fails after `rm`
-- **Network switch spawn** — wait briefly for immediate spawn errors before reporting success
+Web launcher + VPN ON/OFF without redeploy, download path jail, magnet anti-corruption, and release/CI supply-chain hardening.
 
 ### Added
 
-- **VPN ON/OFF without redeploy** — NAS compose wires `TORZLINK_NETWORK_SWITCH_CMD` to [`tools/torzlink-network-switch.sh`](tools/torzlink-network-switch.sh) (Docker socket + `DOCKER_GID`); web toggle starts a detached profile recreate and polls until runtime matches
-- Runtime image includes `docker-cli` / `docker-cli-compose` for the NAS network switch path
-- **Web `.torrent` upload** — `POST /api/torrent` (max 2MB) parses bytes → magnet → same queue as TUI; file input in the queue panel
-- **Web “download to…”** — optional `dir` on `POST /api/downloads` (and `?dir=` on `POST /api/torrent`); UI button “A carpeta…”; when `TORZLINK_DOWNLOAD_DIR` is set, only subdirs of that root are allowed
-- **VPN switch rollback** — pass `TORZLINK_PREV_NETWORK_MODE` so restore uses the pre-switch runtime after `.env` was already patched
-- **`deploy-nas.sh install`** — writes `TORZLINK_DEPLOY_HOST_PATH` to the absolute deploy dir (required for in-UI VPN handoff)
+- **Launcher web mode** — `torzlink serve` from root menus (`--web` / `-Web`)
+- **Web auth** — optional `TORZLINK_SERVE_TOKEN` (Bearer) for `/api/*`; required when VPN switch is configured
+- **VPN ON/OFF without redeploy** — NAS compose wires `TORZLINK_NETWORK_SWITCH_CMD` to [`tools/torzlink-network-switch.sh`](tools/torzlink-network-switch.sh); UI polls until runtime matches; Traefik labels on Gluetun via [`tools/ensure-gluetun-traefik-labels.sh`](tools/ensure-gluetun-traefik-labels.sh)
+- **Web `.torrent` upload** — `POST /api/torrent`; file input in the queue panel
+- **Web “download to…”** — optional `dir` / `?dir=`; jail under `TORZLINK_DOWNLOAD_DIR` or `TORZLINK_DOWNLOAD_ROOT` (realpath + restore filtering)
+- **API rate limit** — mutation/search budget; cheap GET polls excluded; `TORZLINK_TRUST_PROXY` for X-Forwarded-For
+- **SSE** — `GET /api/events` (poll fallback when Bearer is set)
+- **Config** — Zod validation; `seedOnComplete`; structured `TORZLINK_LOG` with redaction
+- **Release** — Trivy Critical scan before GHCR push; pin `softprops/action-gh-release` by SHA
+
+### Fixed
+
+- **CI** — pin `aquasecurity/trivy-action` to commit SHA (`v0.36.0`); `load: true` for local daemon Trivy scans
+- **Magnet boundary** — rebuild canonical magnets in scrapers + TUI copy; sanitize queue/history on load
+- **VPN switch** — preflight before `.env` patch; rollback on failure; wait for SWITCH_CMD exit (not 250ms false OK)
+- **Path isolation in tests** — resolve state paths at call time; unique temp dirs
 
 ### Changed
 
-- `POST /api/network` no longer waits for the switch process (avoids killing the HTTP response mid-recreate); status exposes `pending` / `switchable`
-- `deploy-from-dev` / `deploy-nas.sh install` copy the switch helper and detect `DOCKER_GID` from the host socket
+- `POST /api/network` returns immediately with `pending` while the sibling recreate runs
+- Compose local `env_file` is optional (`required: false`)
 
 ## [1.7.1] — 2026-07-16
 
