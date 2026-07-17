@@ -65,6 +65,7 @@ jobs:
           context: .
           file: packaging/docker/Dockerfile
           push: false
+          load: true
           tags: torzlink:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
