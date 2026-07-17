@@ -8,17 +8,19 @@ export interface Config {
   trackers: string[];
 }
 
-export const defaultConfig: Config = {
-  downloadDir: defaultDownloadDir,
-  trackers: [],
-};
+export function defaultConfig(): Config {
+  return {
+    downloadDir: defaultDownloadDir(),
+    trackers: [],
+  };
+}
 
 export async function loadConfig(): Promise<Config> {
   let raw: string;
   try {
-    raw = await fs.readFile(configFile, "utf8");
+    raw = await fs.readFile(configFile(), "utf8");
   } catch {
-    return { ...defaultConfig, trackers: [] };
+    return defaultConfig();
   }
   try {
     const parsed = JSON.parse(raw) as Partial<Config>;
@@ -27,19 +29,19 @@ export async function loadConfig(): Promise<Config> {
         envVar("TORZLINK_DOWNLOAD_DIR", "TORLINK_DOWNLOAD_DIR") ||
         (typeof parsed.downloadDir === "string" && parsed.downloadDir
           ? parsed.downloadDir
-          : defaultDownloadDir),
+          : defaultDownloadDir()),
       trackers: Array.isArray(parsed.trackers)
         ? parsed.trackers.filter((t): t is string => typeof t === "string" && t.length > 0)
         : [],
     };
     return cfg;
   } catch {
-    return { ...defaultConfig, trackers: [] };
+    return defaultConfig();
   }
 }
 
 const write = serializeWrites();
 
 export function saveConfig(config: Config): Promise<void> {
-  return write(() => writeJsonAtomic(configFile, config));
+  return write(() => writeJsonAtomic(configFile(), config));
 }

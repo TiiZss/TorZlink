@@ -19,15 +19,16 @@ export interface HistoryItem {
 const write = serializeWrites();
 
 export function saveHistory(items: HistoryItem[]): Promise<void> {
-  return write(() => writeJsonAtomic(historyFile, items.slice(0, HISTORY_CAP)));
+  return write(() => writeJsonAtomic(historyFile(), items.slice(0, HISTORY_CAP)));
 }
 
 export function saveHistorySync(items: HistoryItem[]): void {
   try {
-    mkdirSync(path.dirname(historyFile), { recursive: true });
-    const tmp = `${historyFile}.sync.tmp`;
+    const file = historyFile();
+    mkdirSync(path.dirname(file), { recursive: true });
+    const tmp = `${file}.sync.tmp`;
     writeFileSync(tmp, JSON.stringify(items.slice(0, HISTORY_CAP), null, 2), "utf8");
-    renameSync(tmp, historyFile);
+    renameSync(tmp, file);
   } catch {}
 }
 
@@ -40,7 +41,7 @@ function isHistoryItem(v: unknown): v is HistoryItem {
 export async function loadHistory(): Promise<HistoryItem[]> {
   let raw: string;
   try {
-    raw = await fs.readFile(historyFile, "utf8");
+    raw = await fs.readFile(historyFile(), "utf8");
   } catch {
     return [];
   }
