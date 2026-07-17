@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI** — pin `aquasecurity/trivy-action` to commit SHA for `v0.36.0` (tag `0.28.0` no longer resolves; prefer immutable pins after Trivy Action supply-chain incidents)
+
 ### Added
 
 - **VPN ON/OFF without redeploy** — NAS compose wires `TORZLINK_NETWORK_SWITCH_CMD` to [`tools/torzlink-network-switch.sh`](tools/torzlink-network-switch.sh) (Docker socket + `DOCKER_GID`); web toggle starts a detached profile recreate and polls until runtime matches
