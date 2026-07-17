@@ -48,12 +48,24 @@ jobs:
         with:
           context: .
           file: packaging/docker/Dockerfile
-          push: true
+          push: false
+          load: true
           tags: |
             ghcr.io/${{ steps.image.outputs.name }}:latest
             ghcr.io/${{ steps.image.outputs.name }}:${{ github.ref_name }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Container vulnerability scan
+        # Pin by commit SHA (trivy-action tags were historically mutable / compromised).
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/${{ steps.image.outputs.name }}:${{ github.ref_name }}
+          severity: CRITICAL
+          exit-code: "1"
+      - name: Push image to GHCR
+        run: |
+          docker push "ghcr.io/${{ steps.image.outputs.name }}:${{ github.ref_name }}"
+          docker push "ghcr.io/${{ steps.image.outputs.name }}:latest"
 
   github-release:
     runs-on: ubuntu-latest
@@ -84,7 +96,8 @@ jobs:
           if [ ! -s release-notes.md ]; then
             echo "Release ${GITHUB_REF_NAME}" > release-notes.md
           fi
-      - uses: softprops/action-gh-release@v2
+      # Pin by commit SHA (mutable tags).
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           body_path: release-notes.md
           generate_release_notes: true

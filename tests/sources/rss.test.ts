@@ -40,6 +40,18 @@ describe("fetchWordpressRss", () => {
     expect(mockFetch.mock.calls[0]![0]).toBe("https://x.site/feed/");
   });
 
+  it("rebuilds magnets and drops smuggled trackers from RSS hrefs", async () => {
+    const hash = "b".repeat(40);
+    const poisoned =
+      `<item><title>Poison</title><pubDate>Tue, 30 Jun 2026 00:00:00 +0000</pubDate>` +
+      `<a href="magnet:?xt=urn:btih:${hash}&amp;tr=udp://evil.example:1/announce">m</a></item>`;
+    mockFetch.mockResolvedValueOnce(page(feed(poisoned)));
+    const results = await fetchWordpressRss("https://x.site", "fitgirl", "");
+    expect(results).toHaveLength(1);
+    expect(results[0]!.magnet).not.toContain("evil.example");
+    expect(results[0]!.magnet).toContain("tracker.opentrackr.org");
+  });
+
   it("fans out to pages 2 and 3 when page 1 is full, keeping page order", async () => {
     mockFetch
       .mockResolvedValueOnce(page(feed(...hashes(10, "a").map(item))))

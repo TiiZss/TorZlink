@@ -59,6 +59,12 @@ export class DownloadQueue extends EventEmitter {
   // Extra announce URLs appended to every torrent added from now on.
   // Existing running torrents aren't retro-updated — the change takes effect
   // for the next add / resume / re-seed.
+  private seedOnComplete = true;
+
+  setSeedOnComplete(enabled: boolean): void {
+    this.seedOnComplete = enabled;
+  }
+
   setTrackers(trackers: string[]): void {
     this.trackers = trackers;
   }
@@ -190,9 +196,9 @@ export class DownloadQueue extends EventEmitter {
   private complete(it: QueueItem): void {
     this.recordHistory(it);
     this.items.delete(it.id);
-    // Opt-out seeding: a finished download is already a complete, verified
-    // torrent, so keep it alive and seeding instead of tearing it down.
-    this.beginSeed(it);
+    // Default: keep seeding. Config/env can disable (privacy / bandwidth).
+    if (this.seedOnComplete) this.beginSeed(it);
+    else this.engine.remove(it.id);
     this.emit("completed", it);
     this.changed();
     void this.persist();

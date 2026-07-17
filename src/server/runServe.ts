@@ -16,6 +16,13 @@ export interface ServeOptions {
 }
 
 export async function runServe(opts: ServeOptions): Promise<void> {
+  const switchCmd = process.env.TORZLINK_NETWORK_SWITCH_CMD?.trim();
+  if (switchCmd && !serveToken()) {
+    throw new Error(
+      "TORZLINK_SERVE_TOKEN is required when TORZLINK_NETWORK_SWITCH_CMD is set (Docker socket / VPN switch).",
+    );
+  }
+
   const runtime = await createTorzlinkRuntime();
 
   const onCompleted = (it: QueueItem): void => {

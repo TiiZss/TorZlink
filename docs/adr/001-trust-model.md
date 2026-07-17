@@ -17,6 +17,7 @@
 | TorZlink → filesystem | User-chosen download/state dirs | Scraped filenames | `sanitizeFilename`, path normalization |
 | TorZlink → Telegram (optional) | User-owned bot + channel | Telegram API, channel members | `.magnet` attachments on copy/start; no magnet URI on complete/error; secrets in `.env` only |
 | TorZlink → network | User intent (search/download/seed) | ISP, trackers, peers | Documented seeding exposure; optional NAS **vpn** mode via Gluetun (`TORZLINK_NETWORK_MODE=vpn`) |
+| TorZlink → Docker Engine (NAS switch) | Operator-configured compose project only | Full host Docker if socket is abused | Optional: mount `/var/run/docker.sock` + `TORZLINK_NETWORK_SWITCH_CMD` for in-UI VPN↔direct; **require** `TORZLINK_SERVE_TOKEN`; script allowlists compose profiles `direct`/`vpn` only |
 
 ### HTTP / NAS deployment modes
 
@@ -26,6 +27,8 @@
 Both modes assume LAN-only DNS (`torzlink.lan` → Traefik). Opening the UI on the public internet without Traefik auth (basicAuth / Authelia / etc.) is an accepted risk only if the operator explicitly chooses it — not the default.
 
 Set `TORZLINK_SERVE_TOKEN` when other containers share `proxy_net`: Traefik middleware alone does not stop east-west calls to `:8787`.
+
+When the NAS compose mounts the Docker socket for **VPN ON/OFF without redeploy**, treat a stolen Bearer token as equivalent to local `docker compose` on that project: always set a long random `TORZLINK_SERVE_TOKEN`, keep the UI off the public internet, and keep `DOCKER_GID` matched to the host socket group.
 
 ### Source policy
 

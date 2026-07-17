@@ -87,7 +87,7 @@ function Detail({ r, width }: { r: TorrentResult; width: number }) {
           label="Magnet"
           value={
             <Text color={COLOR.alt} dimColor wrap="truncate-end">
-              {stripControl(r.magnet)}
+              {`magnet:?xt=urn:btih:${stripControl(r.infoHash)}… (y = copy canonical)`}
             </Text>
           }
         />

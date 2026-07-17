@@ -1,76 +1,72 @@
-# Next session — TorZlink backlog
+# Next session — TorZlink backlog & plan
 
-In progress after **v1.7.1**: web UI retro theme + Red/VPN toggle (local serve); NAS redeploy pending.
+Session wrap-up **2026-07-17 (noche II)**: PR [#2](https://github.com/TiiZss/TorZlink/pull/2). Backlog P0–P2 **implementado** en la rama (salvo P3 arquitectura / HITL merge).
+
+## Gates
+
+| Gate | Estado |
+| --- | --- |
+| CI | Re-check tras push masivo |
+| P0 security/switch/jail/scrapers | **DONE** |
+| P1 product/HTTP/CI/docs | **DONE** (SSE sin Bearer → poll fallback) |
+| P2 quality | **DONE** (Zod, log, seedOnComplete, Results, launchers env_file) |
+| Merge PR #2 | **HITL** — confirmación usuario |
+| Release tag | Tras merge + `pre-release` + reviews |
 
 ## Product invariant — Web ≡ TUI
 
-**La web (`torzlink serve`) debe ser un clon funcional de la TUI.** Mismo alcance de producto, mismos flujos; solo cambia el shell (HTML vs Ink). No se considera “done” una feature de TUI hasta que exista equivalente usable en la web (API + UI).
+Sin cambios de alcance; ayuda web + `seedOnComplete` + SSE/poll cierran gaps de UX.
 
-### Paridad TUI → Web (checklist)
+## Ops — VPN / Traefik
 
-| # | Capacidad TUI | Estado web | Notas de implementación |
-| --- | --- | --- | --- |
-| 1 | Búsqueda multi-fuente + resultados | Parcial | Falta filtrar por categoría/fuente como el sidebar (`All` / Games / Movies / …) |
-| 2 | Añadir a cola (magnet / infohash / resultado) | Parcial | OK básico; falta “download to…” (carpeta alternativa por ítem) |
-| 3 | Cola activa: pause / resume / cancel + progreso | Parcial | OK; falta ETA, open folder, parity de badges/contadores |
-| 4 | **Downloads** (historial / recently downloaded) | Falta | API + pestaña History |
-| 5 | **Seeding** (lista, pause/stop seed) | Falta | API + pestaña Seeding |
-| 6 | Copiar magnet / guardar `.magnet` | Falta | Botón Copy + notificación Telegram alineada con TUI |
-| 7 | Pegar magnet (clipboard / input) | Parcial | Input magnet OK; clipboard del host es distinto en browser |
-| 8 | Abrir `.torrent` | Falta | Upload / path API |
-| 9 | Config: carpeta de descarga global | Falta | GET/PATCH config + UI |
-| 10 | Config: trackers custom (+ warning hosts) | Falta | Misma validación que TUI |
-| 11 | Categorías / filtros de fuentes (sidebar) | Falta | Nav espejo del rail TUI |
-| 12 | Ordenación de resultados | Falta | Sort por seeds/size/name como Results |
-| 13 | Help / keymap contextual | N/A web | Sustituir por ayuda corta en UI (no clonar atajos Ink) |
-| 14 | Splash / branding | Parcial | Look retro alineado; splash TUI no obligatorio |
-| 15 | Notificaciones Telegram (copy/start/complete/error) | Parcial | Runtime serve ya puede notificar; web debe disparar los mismos eventos |
-| 16 | Modo red **direct** ↔ **vpn** (NAS) | Parcial | Toggle UI VPN ON/OFF existe; **falta apply sin redeploy** (ver invariante abajo) |
+Labels Gluetun + docs Traefik≠Bearer OK. Phase 2 sidecar → P3-1.
 
-**Regla de trabajo:** cada PR de producto web debe avanzar al menos una fila “Falta” → “Parcial/OK” y compartir lógica con el core (no reimplementar scrapers/queue en el front).
+---
 
-## Ops invariant — VPN ON/OFF sin redeploy
+## Recommended order (histórico — casi todo DONE)
 
-**El switch VPN de la web debe aplicar el cambio de salida (direct ↔ Gluetun) sin `deploy-from-dev` / rebuild de imagen ni un redeploy manual del operador.**
+### P0 — **DONE**
 
-Hoy el compose usa perfiles/`network_mode: container:gluetun`, que obliga a recrear el contenedor. Objetivo de producto:
+P0-A…D, P0-1…4 (incl. `TORZLINK_DOWNLOAD_ROOT`).
 
-- Clic en **VPN ON/OFF** → el swarm sale (o deja de salir) por VPN de forma efectiva
-- Sin pedir al usuario que vuelva a desplegar desde el PC
-- Aceptable: recrear/reenganchar el contenedor TorZlink vía API/agente en el NAS (p. ej. `deploy-nas.sh switch` o Docker socket / sidecar privilegiado), **siempre que sea automático tras el clic**
-- No aceptable como estado final: solo guardar preferencia en `.env` / `network-mode.json` y dejar el runtime igual hasta un redeploy humano
+### P1 — **DONE**
 
-Ideas de diseño (elegir una en implementación):
+| ID | Notas |
+| --- | --- |
+| P1-5 | Panel ayuda en `web/index.html` |
+| P1-6 | `GET /api/events` SSE; UI usa EventSource sin token, poll con Bearer |
+| P1-7 | `src/server/rateLimit.ts` → 429 |
+| P1-8 | sanitize en `loadQueue` / `loadHistory` |
+| P1-9 | `docs/smoke-docker-windows.md` |
+| P1-10 | README Windows Docker |
+| P1-11 | Trivy en `release.yml` antes de push GHCR |
+| P1-12 | `softprops/action-gh-release` pineado por SHA |
 
-1. Sidecar/host helper con Docker socket que ejecuta `compose --profile … up -d` al recibir el POST `/api/network`
-2. Contenedor siempre en `proxy_net` + routing/policy vía Gluetun (sin cambiar `network_mode`) si el homelab lo permite
-3. `TORZLINK_NETWORK_SWITCH_CMD` cableado por defecto en el compose NAS al script de switch del host
+### P2 — **DONE**
 
-## Recommended order
+| ID | Notas |
+| --- | --- |
+| P2-13 | Zod schema `config.json` (+ `seedOnComplete`) |
+| P2-14 | `TORZLINK_LOG` + `redactLogText` |
+| P2-15 | `seedOnComplete` config/API/UI (default true) |
+| P2-16 | Results TUI: magnet canónico corto |
+| P2-17 | EZTV rebuild (hecho con P0-2) |
+| P2-18 | compose `env_file.required: false` + follow-ups |
 
-| Priority | Area | Item | Notes |
-| --- | --- | --- | --- |
-| 1 | Product | **Web ≡ TUI feature parity** | Ver checklist arriba; empezar por categorías + History + Seeding + Copy magnet |
-| 2 | Ops | **VPN ON/OFF sin redeploy** | Switch web aplica direct↔vpn automáticamente; ver invariante arriba |
-| 3 | Ops | NAS redeploy (UI retro + switch VPN + parity incremental) | `deploy-from-dev` cuando el look/dev esté OK |
-| 4 | QA | Manual TUI download smoke test in Docker (Windows host) | Validate end-to-end on the primary dev machine |
-| 5 | Docs | Windows-specific Docker volume docs | `%cd%`, WSL2, Desktop bind-mount quirks |
-| 6 | Quality P2 | Zod schema for `config.json` | `downloadDir`, `trackers[]` validation at load |
-| 7 | Quality P2 | Scraper anti-corruption layer | Rebuild magnet from infoHash; no raw HTML passthrough |
+### P3 — pendiente (no bloquea merge)
 
-## Also on the board
+| ID | Item |
+| --- | --- |
+| P3-1 | Sidecar VPN switch sin socket en proceso BT |
+| P3-2 | Selective upstream sync `baairon/torlink` |
+| P3-3 | Authelia snippet completo (basicAuth ya esbozado en labels.md) |
 
-- **P2:** `TORZLINK_DOWNLOAD_ROOT` path jail, structured logging `TORZLINK_LOG`, no-seed-by-default
-- **Web UX:** SSE/WebSocket progress (sustituto del refresh 1s), Traefik basicAuth opcional
-- **Maintenance:** Selective upstream sync from `baairon/torlink`
-- **Launchers:** [docs/follow-ups-launchers.md](follow-ups-launchers.md) — code review PR hygiene
+---
 
-## Reference — v1.7.1
+**HITL:** merge de PR #2 y tags de release requieren confirmación explícita.
 
-- NAS bind: `TORZLINK_DOWNLOADS_HOST` → `/downloads`; container `user: PUID:PGID`
-- `deploy-from-dev.ps1` plink+cat for remote `.env`; bash `if/fi` for Gluetun check
-- POST `/api/downloads` → **409** when already queued
+## Reference — v1.7.1+
 
-## Skills to invoke
-
-See [docs/agent-workflow.md](agent-workflow.md) for the full routing table, review gates, and release checklist.
+- Jail: `TORZLINK_DOWNLOAD_DIR` (lock) o `TORZLINK_DOWNLOAD_ROOT` (prefijo)
+- Release: scan Trivy Critical antes de `docker push`
+- Skills: [docs/agent-workflow.md](agent-workflow.md)

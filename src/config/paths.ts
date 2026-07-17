@@ -26,16 +26,30 @@ function activePaths() {
   return modern;
 }
 
-const paths = activePaths();
-const dataDir = paths.data;
-const configDir = paths.config;
+/** Resolve at call time so tests can override TORZLINK_STATE_DIR / DOWNLOAD_DIR. */
+export function defaultDownloadDir(): string {
+  return (
+    envVar("TORZLINK_DOWNLOAD_DIR", "TORLINK_DOWNLOAD_DIR") ||
+    path.join(os.homedir(), "Downloads", APP_NAME)
+  );
+}
 
-export const defaultDownloadDir =
-  envVar("TORZLINK_DOWNLOAD_DIR", "TORLINK_DOWNLOAD_DIR") ||
-  path.join(os.homedir(), "Downloads", APP_NAME);
+export function configFile(): string {
+  return path.join(activePaths().config, "config.json");
+}
 
-export const configFile = path.join(configDir, "config.json");
-export const queueFile = path.join(dataDir, "queue.json");
-export const historyFile = path.join(dataDir, "history.json");
-export const seedsFile = path.join(dataDir, "seeds.json");
-export const torrentsDir = path.join(dataDir, "torrents");
+export function queueFile(): string {
+  return path.join(activePaths().data, "queue.json");
+}
+
+export function historyFile(): string {
+  return path.join(activePaths().data, "history.json");
+}
+
+export function seedsFile(): string {
+  return path.join(activePaths().data, "seeds.json");
+}
+
+export function torrentsDir(): string {
+  return path.join(activePaths().data, "torrents");
+}

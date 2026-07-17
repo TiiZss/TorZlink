@@ -60,7 +60,45 @@ cmd_install() {
     chmod 600 "${ENV_FILE}" || true
     info "using existing ${ENV_FILE}"
   fi
+  local switch_src="${SCRIPT_DIR}/torzlink-network-switch.sh"
+  if [[ -f "${switch_src}" ]]; then
+    cp "${switch_src}" "${DEPLOY_DIR}/torzlink-network-switch.sh"
+    chmod +x "${DEPLOY_DIR}/torzlink-network-switch.sh" || true
+    info "installed ${DEPLOY_DIR}/torzlink-network-switch.sh (web VPN toggle)"
+  fi
+  if [[ -f "${COMPOSE_FILE}" && "${COMPOSE_FILE}" != "${DEPLOY_DIR}/docker-compose.nas.yml" ]]; then
+    cp "${COMPOSE_FILE}" "${DEPLOY_DIR}/docker-compose.nas.yml"
+    info "copied compose → ${DEPLOY_DIR}/docker-compose.nas.yml"
+  fi
   load_env
+  local abs_deploy
+  abs_deploy="$(cd "${DEPLOY_DIR}" && pwd)"
+  if grep -qE '^[[:space:]]*TORZLINK_DEPLOY_HOST_PATH=' "${ENV_FILE}"; then
+    local tmp
+    tmp="$(mktemp)"
+    sed -E "s|^[[:space:]]*TORZLINK_DEPLOY_HOST_PATH=.*|TORZLINK_DEPLOY_HOST_PATH=${abs_deploy}|" "${ENV_FILE}" >"${tmp}"
+    mv "${tmp}" "${ENV_FILE}"
+  else
+    printf '\nTORZLINK_DEPLOY_HOST_PATH=%s\n' "${abs_deploy}" >>"${ENV_FILE}"
+  fi
+  chmod 600 "${ENV_FILE}" || true
+  export TORZLINK_DEPLOY_HOST_PATH="${abs_deploy}"
+  info "TORZLINK_DEPLOY_HOST_PATH=${abs_deploy} (VPN switch handoff mount)"
+  if [[ -z "${TORZLINK_SERVE_TOKEN:-}" ]]; then
+    local token
+    token="$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 32)"
+    if grep -qE '^[[:space:]]*TORZLINK_SERVE_TOKEN=' "${ENV_FILE}"; then
+      local tmp
+      tmp="$(mktemp)"
+      sed -E "s/^[[:space:]]*TORZLINK_SERVE_TOKEN=.*/TORZLINK_SERVE_TOKEN=${token}/" "${ENV_FILE}" >"${tmp}"
+      mv "${tmp}" "${ENV_FILE}"
+    else
+      printf '\nTORZLINK_SERVE_TOKEN=%s\n' "${token}" >>"${ENV_FILE}"
+    fi
+    chmod 600 "${ENV_FILE}" || true
+    export TORZLINK_SERVE_TOKEN="${token}"
+    info "generated TORZLINK_SERVE_TOKEN (required for VPN switch / API admin)"
+  fi
   local data_dir="${DOCKER_CONFIG_ROOT:-/volume2/Docker_Configs}/torzlink"
   local dl_dir="${TORZLINK_DOWNLOADS_HOST:-${MEDIA_ROOT:-/volume1/data}/media/descargas/torrents}"
   local puid="${PUID:-1000}"
@@ -74,7 +112,10 @@ cmd_install() {
     info "hint: set PROXY_NET_NAME from: docker network ls"
   fi
   if [[ "${TORZLINK_NETWORK_MODE:-direct}" == "vpn" ]]; then
-    info "vpn mode: paste Traefik labels from packaging/docker/traefik-gluetun-torzlink.labels.md onto gluetun"
+    info "vpn mode: TorZlink Traefik labels must be on gluetun (ensure-gluetun-traefik-labels.sh --apply)"
+  fi
+  if [[ -z "${DOCKER_GID:-}" ]]; then
+    info "hint: set DOCKER_GID=\$(stat -c '%g' /var/run/docker.sock) for in-UI VPN switch"
   fi
   info "DNS: point torzlink.lan at Traefik LAN IP (e.g. 192.168.1.2)"
   info "next: $(basename "$0") up"
@@ -84,6 +125,8 @@ cmd_up() {
   need_cmd docker
   [[ -f "${ENV_FILE}" ]] || die "missing ${ENV_FILE} — run: $(basename "$0") install"
   load_env
+  [[ -n "${TORZLINK_SERVE_TOKEN:-}" ]] \
+    || die "TORZLINK_SERVE_TOKEN is required (re-run install or set it in .env)"
   local profile
   profile="$(mode_profile)"
   if [[ "${profile}" == "direct" ]]; then
@@ -93,6 +136,16 @@ cmd_up() {
     local g="${GLUETUN_CONTAINER_NAME:-gluetun}"
     docker inspect -f '{{.State.Running}}' "${g}" 2>/dev/null | grep -qx true \
       || die "gluetun container '${g}' is not running"
+    local ensure="${DEPLOY_DIR}/ensure-gluetun-traefik-labels.sh"
+    if [[ ! -f "${ensure}" ]]; then
+      ensure="${SCRIPT_DIR}/ensure-gluetun-traefik-labels.sh"
+    fi
+    if [[ -f "${ensure}" ]]; then
+      sh "${ensure}" --apply \
+        || die "TorZlink Traefik labels missing on gluetun — see packaging/docker/traefik-gluetun-torzlink.labels.md"
+    else
+      info "hint: copy ensure-gluetun-traefik-labels.sh to ${DEPLOY_DIR} (or paste labels onto gluetun)"
+    fi
   fi
   # Tear down the other profile so only one torzlink exists
   if [[ "${profile}" == "direct" ]]; then

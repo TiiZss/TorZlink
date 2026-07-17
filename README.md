@@ -71,7 +71,7 @@ Full version history: [CHANGELOG.md](CHANGELOG.md).
 
 ## Quick launch
 
-After cloning, run the root launcher — it shows a menu to pick **native** (Node.js) or **Docker**:
+After cloning, run the root launcher — it shows a menu to pick **native** (TUI), **Docker** (TUI), or **web** (`torzlink serve`):
 
 | OS | Command |
 |----|---------|
@@ -81,14 +81,15 @@ After cloning, run the root launcher — it shows a menu to pick **native** (Nod
 
 ```
 TorZlink — launcher
-  1) Native (Node.js, local development)
-  2) Docker (interactive container)
+  1) Native (Node.js TUI, local development)
+  2) Docker (interactive TUI container)
+  3) Web UI (torzlink serve)
   q) Exit
 
-Choose [1/2/q]:
+Choose [1/2/3/q]:
 ```
 
-Skip the menu in scripts or CI: `./torzlink.sh --native`, `.\torzlink.ps1 -Docker`, etc.
+Skip the menu in scripts or CI: `./torzlink.sh --native`, `.\torzlink.ps1 -Docker`, `./torzlink.sh --web`, etc.
 
 If `.env` is missing when you pick Docker, the launcher offers to create an empty file (Telegram is optional; see `.env.example`).
 
@@ -109,8 +110,9 @@ To run or work on TorZlink locally:
 3. Launch with auto-setup (installs and updates dependencies on every start):
 
    ```sh
-   ./torzlink.sh          # menu: native or Docker
-   npm run launch         # native only
+   ./torzlink.sh          # menu: native / Docker / web
+   npm run launch         # native TUI only
+   npm run serve          # web UI only
    ```
 
    Or the classic flow:
@@ -172,6 +174,14 @@ docker compose -f packaging/docker/docker-compose.yml run --rm -it torzlink
 
 **Docker Desktop:** `docker compose run --rm` creates a one-off container (name like `torzlink-torzlink-run-…`) that only appears under **Containers** while the TUI is running. When you quit or the app exits, `--rm` removes it immediately — that is expected, not a bug.
 
+#### Windows + Docker Desktop
+
+- Prefer PowerShell bind mounts with `"${PWD}/downloads:/downloads"` or `%cd%\downloads` — avoid mixing WSL paths (`/mnt/c/...`) with Desktop’s Linux VM unless you intend WSL2 integration.
+- Ensure `docker` is on PATH (Docker Desktop → Settings → “Use Docker Compose V2”). Restart the terminal after install.
+- Keep `.env` and shell scripts as **UTF-8 LF** (Git `core.autocrlf` may rewrite; launchers tolerate CRLF but compose/`sh` scripts should be LF).
+- File sharing: enable the drive that holds the repo under Docker Desktop → Resources → File sharing, or downloads will appear empty inside the container.
+- Interactive TUI needs a real TTY: `docker compose … run --rm -it` (or `npm run docker:run` / launcher **Docker**). Smoke checklist: [docs/smoke-docker-windows.md](docs/smoke-docker-windows.md).
+
 Build the image manually (tags it as `torzlink:latest`):
 
 ```sh
@@ -188,14 +198,17 @@ On Linux/macOS, replace `%cd%` with `$(pwd)`.
 
 ### Web UI (`torzlink serve`)
 
-LAN admin UI + JSON API (search + download queue). No in-app login — trust Traefik / your LAN (see [ADR-001](docs/adr/001-trust-model.md)).
+LAN admin UI + JSON API (search + download queue). No in-app login — treat the UI as an **admin surface** (see [ADR-001](docs/adr/001-trust-model.md)). Traefik host routing alone is **not** authentication: anything on `proxy_net` can still call `:8787` east-west. Always set `TORZLINK_SERVE_TOKEN` on NAS / shared networks; optionally add Traefik `basicAuth` / Authelia in front of `torzlink.lan` for defense in depth.
 
 ```sh
+./torzlink.sh --web
+# or:
+npm run serve
 torzlink serve --host 127.0.0.1 --port 8787
 # or from repo: npx tsx src/app/entry.tsx serve --host 127.0.0.1 --port 8787
 ```
 
-Open `http://127.0.0.1:8787`. Endpoints: `GET /health`, `GET /api/auth`, `GET /api/search?q=`, `GET|POST /api/downloads`, `POST /api/downloads/:id/pause|resume|cancel`.
+Open `http://127.0.0.1:8787`. Endpoints: `GET /health`, `GET /api/auth`, `GET /api/categories`, `GET /api/search?q=&group=&hideDead=&sort=`, `POST /api/copy-magnet`, `GET|POST /api/downloads`, `POST /api/downloads/:id/pause|resume|cancel`, `GET|DELETE /api/history`, `POST /api/history/:id/redownload`, `GET /api/seeds`, `POST /api/seeds/:id/pause|resume|toggle`, `GET|PATCH /api/config`, `GET|POST /api/network`.
 
 On shared Docker networks, set `TORZLINK_SERVE_TOKEN` so `/api/*` requires `Authorization: Bearer …` (the UI prompts for the token).
 
@@ -251,7 +264,8 @@ bash repo/tools/deploy-nas.sh up
 ```
 
 - **`TORZLINK_NETWORK_MODE=direct`** — TorZlink on `proxy_net`; Traefik labels on the service (`Host(\`torzlink.lan\`)`).
-- **`TORZLINK_NETWORK_MODE=vpn`** — `network_mode: container:gluetun`; paste labels from [packaging/docker/traefik-gluetun-torzlink.labels.md](packaging/docker/traefik-gluetun-torzlink.labels.md) onto Gluetun.
+- **`TORZLINK_NETWORK_MODE=vpn`** — `network_mode: container:gluetun`; run `sh tools/ensure-gluetun-traefik-labels.sh --apply` on the NAS (or paste labels from [packaging/docker/traefik-gluetun-torzlink.labels.md](packaging/docker/traefik-gluetun-torzlink.labels.md) onto Gluetun).
+- **Web VPN toggle** — with the NAS compose defaults (Docker socket + `torzlink-network-switch.sh`), **VPN ON/OFF** in the UI recreates the profile automatically. Set `DOCKER_GID` to the host socket group (`stat -c '%g' /var/run/docker.sock`) and keep `TORZLINK_SERVE_TOKEN` set — the socket is full Docker access for that project.
 
 Point Pi-hole DNS `torzlink.lan` at Traefik’s LAN IP.
 
@@ -408,8 +422,8 @@ kanban
   column Next session
     Web UI feature parity clone of TUI
     Categories History Seeding Copy config trackers
-    VPN ON OFF apply without redeploy
-    NAS redeploy retro UI VPN switch
+    NAS redeploy smoke VPN toggle
+    Web parity download-to torrent upload
     Manual interactive download test in Docker TUI
     Windows-specific Docker volume docs
     Zod schema validation for config.json
@@ -457,9 +471,11 @@ kanban
 | ✅ Done | Docs | Agent workflow — [docs/agent-workflow.md](docs/agent-workflow.md) + `npm run pre-release` |
 | ✅ Done | Product | Web UI + API (`torzlink serve`) — search + download queue (MVP) |
 | ✅ Done | Ops | NAS deploy — Traefik v3, `TORZLINK_NETWORK_MODE=direct\|vpn`, `tools/deploy-nas.sh` |
-| 🔜 Next | Product | **Web ≡ TUI** — misma funcionalidad que la TUI (categorías, History, Seeding, Copy, config, trackers) — [docs/next-session.md](docs/next-session.md) |
-| 🔜 Next | Ops | **VPN ON/OFF sin redeploy** — el switch de la web debe aplicar direct↔Gluetun automáticamente |
-| 🔜 Next | Ops | NAS redeploy — UI retro + switch VPN + parity incremental |
+| ✅ Done | Product | Web UI parity — categorías, sort, hideDead, Copy magnet, History, Seeding, Config |
+| ✅ Done | Product | Web `GET/PATCH /api/config` (downloadDir + trackers) |
+| 🔜 Next | Product | **Web ≡ TUI** — config downloadDir/trackers, upload `.torrent`, download-to… — [docs/next-session.md](docs/next-session.md) |
+| ✅ Done | Ops | **VPN ON/OFF sin redeploy** — `TORZLINK_NETWORK_SWITCH_CMD` + Docker socket; UI polling |
+| 🔜 Next | Ops | NAS redeploy — validar toggle VPN en homelab + parity incremental |
 | 🔜 Next | QA | Manual TUI download smoke test in Docker (Windows host) |
 | 🔜 Next | Docs | Windows-specific Docker volume docs |
 | 🔜 Next | Quality P2 | Zod schema for `config.json` (`downloadDir`, `trackers[]`) |
@@ -470,7 +486,8 @@ kanban
 | 📋 P2 | Quality | Optional `TORZLINK_DOWNLOAD_ROOT` + `realpath` validation |
 | 📋 P2 | Ops | Structured logging `TORZLINK_LOG` with token/magnet redaction |
 | 📋 P2 | UX/Privacy | Global no-seed-by-default config option |
-| 📋 Follow-ups | Launchers | Checklist in [docs/follow-ups-launchers.md](docs/follow-ups-launchers.md) |
+| ✅ Done | Launchers | Menu option **3) Web UI** (`--web` / `-Web` → `npm run serve`) |
+| 📋 Follow-ups | Launchers | Remaining checklist in [docs/follow-ups-launchers.md](docs/follow-ups-launchers.md) |
 
 **Priorities:** 🔜 Next = pick up here ([docs/next-session.md](docs/next-session.md)) · 📋 Planned = broader roadmap · 📋 P2 = quality/maintainability · Security P0/P1 complete as of **v1.6.0**.
 

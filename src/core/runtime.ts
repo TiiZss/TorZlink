@@ -15,6 +15,7 @@ export async function createTorzlinkRuntime(): Promise<TorzlinkRuntime> {
   const config = await loadConfig();
   const queue = new DownloadQueue();
   queue.setTrackers(config.trackers);
+  queue.setSeedOnComplete(config.seedOnComplete);
   queue.restore(reconcileQueue(await loadQueue()));
   queue.restoreHistory(await loadHistory());
   queue.restoreSeeds(await loadSeeds());

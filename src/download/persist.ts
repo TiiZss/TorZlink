@@ -1,21 +1,24 @@
 import { promises as fs, mkdirSync, writeFileSync, renameSync, existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import { queueFile, seedsFile, torrentsDir } from "../config/paths";
+import { isDirInsideJailSync } from "../config/downloadJail";
+import { sanitizeDownloadInput } from "../sources/magnet";
 import { serializeWrites, writeJsonAtomic } from "../util/atomic";
 import type { QueueItem } from "./types";
 
 const write = serializeWrites();
 
 export function saveQueue(items: QueueItem[]): Promise<void> {
-  return write(() => writeJsonAtomic(queueFile, items));
+  return write(() => writeJsonAtomic(queueFile(), items));
 }
 
 export function saveQueueSync(items: QueueItem[]): void {
   try {
-    mkdirSync(path.dirname(queueFile), { recursive: true });
-    const tmp = `${queueFile}.sync.tmp`;
+    const file = queueFile();
+    mkdirSync(path.dirname(file), { recursive: true });
+    const tmp = `${file}.sync.tmp`;
     writeFileSync(tmp, JSON.stringify(items, null, 2), "utf8");
-    renameSync(tmp, queueFile);
+    renameSync(tmp, file);
   } catch {}
 }
 
@@ -25,16 +28,35 @@ function isQueueItem(v: unknown): v is QueueItem {
   return typeof r.id === "string" && typeof r.magnet === "string";
 }
 
+function sanitizeQueueItem(raw: QueueItem): QueueItem | null {
+  const safe = sanitizeDownloadInput({
+    id: raw.id,
+    name: typeof raw.name === "string" ? raw.name : raw.id,
+    magnet: raw.magnet,
+    source: raw.source,
+    sizeBytes: typeof raw.totalBytes === "number" ? raw.totalBytes : undefined,
+  });
+  if (!safe) return null;
+  if (typeof raw.dir === "string" && raw.dir && !isDirInsideJailSync(raw.dir)) {
+    return null;
+  }
+  return { ...raw, id: safe.id, name: safe.name, magnet: safe.magnet };
+}
+
 export async function loadQueue(): Promise<QueueItem[]> {
   let raw: string;
   try {
-    raw = await fs.readFile(queueFile, "utf8");
+    raw = await fs.readFile(queueFile(), "utf8");
   } catch {
     return [];
   }
   try {
     const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? parsed.filter(isQueueItem) : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter(isQueueItem)
+      .map(sanitizeQueueItem)
+      .filter((x): x is QueueItem => x !== null);
   } catch {
     return [];
   }
@@ -51,22 +73,23 @@ export interface SeedRecord {
 }
 
 export function saveSeeds(records: SeedRecord[]): Promise<void> {
-  return write(() => writeJsonAtomic(seedsFile, records));
+  return write(() => writeJsonAtomic(seedsFile(), records));
 }
 
 export function saveSeedsSync(records: SeedRecord[]): void {
   try {
-    mkdirSync(path.dirname(seedsFile), { recursive: true });
-    const tmp = `${seedsFile}.sync.tmp`;
+    const file = seedsFile();
+    mkdirSync(path.dirname(file), { recursive: true });
+    const tmp = `${file}.sync.tmp`;
     writeFileSync(tmp, JSON.stringify(records, null, 2), "utf8");
-    renameSync(tmp, seedsFile);
+    renameSync(tmp, file);
   } catch {}
 }
 
 // --- per-torrent .torrent metadata cache ------------------------------------
 
 export function torrentMetaPath(id: string): string {
-  return path.join(torrentsDir, `${id}.torrent`);
+  return path.join(torrentsDir(), `${id}.torrent`);
 }
 
 export function torrentMetaExists(id: string): boolean {
@@ -84,7 +107,7 @@ export function torrentExportName(name: string, id: string): string {
 
 export async function saveTorrentMeta(id: string, data: Uint8Array): Promise<void> {
   try {
-    await fs.mkdir(torrentsDir, { recursive: true });
+    await fs.mkdir(torrentsDir(), { recursive: true });
     const file = torrentMetaPath(id);
     const tmp = `${file}.tmp`;
     await fs.writeFile(tmp, data);
@@ -114,7 +137,7 @@ export function deleteTorrentMeta(id: string): void {
 export async function loadSeeds(): Promise<SeedRecord[]> {
   let raw: string;
   try {
-    raw = await fs.readFile(seedsFile, "utf8");
+    raw = await fs.readFile(seedsFile(), "utf8");
   } catch {
     return [];
   }
