@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import http from "node:http";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, symlink, mkdir, realpath } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createTorzlinkRuntime } from "../../src/core/runtime";
@@ -333,8 +333,42 @@ describe("HTTP API", () => {
         JSON.stringify({ input: hash, dir: "sub" }),
       );
       expect(ok.status).toBe(201);
-      expect((ok.json as { dir: string }).dir).toBe(path.join(runtime.config.downloadDir, "sub"));
+      expect((ok.json as { dir: string }).dir).toBe(
+        await realpath(path.join(runtime.config.downloadDir, "sub")),
+      );
       await request(handler, "POST", `/api/downloads/${hash}/cancel`, "{}");
+    } finally {
+      runtime.dispose();
+      delete process.env.TORZLINK_DOWNLOAD_DIR;
+    }
+  });
+
+  it("rejects per-item dir that escapes jail via symlink", async () => {
+    const downloadRoot = path.join(stateDir, "downloads");
+    const outside = path.join(stateDir, "outside-target");
+    await mkdir(downloadRoot, { recursive: true });
+    await mkdir(outside, { recursive: true });
+    const linkPath = path.join(downloadRoot, "escape");
+    try {
+      await symlink(outside, linkPath, "dir");
+    } catch {
+      // Windows may require elevated privileges for symlinks.
+      return;
+    }
+    process.env.TORZLINK_DOWNLOAD_DIR = downloadRoot;
+    const runtime = await createTorzlinkRuntime();
+    try {
+      const handler: http.RequestListener = (req, res) => {
+        void handleRequest(req, res, runtime, publicDir);
+      };
+      const hash = "aabbccddeeff00112233445566778899aabbccdd";
+      const denied = await request(
+        handler,
+        "POST",
+        "/api/downloads",
+        JSON.stringify({ input: hash, dir: "escape" }),
+      );
+      expect(denied.status).toBe(403);
     } finally {
       runtime.dispose();
       delete process.env.TORZLINK_DOWNLOAD_DIR;

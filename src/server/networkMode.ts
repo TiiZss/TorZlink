@@ -110,20 +110,28 @@ function startSwitchCmd(
       };
       child.on("error", (err) => done({ ok: false, detail: err.message }));
       child.on("exit", (code, signal) => {
-        if (code === 0 || code === null) return;
+        // Handoff script exits 0 after `docker run -d`; non-zero = failed to schedule.
+        if (code === 0) {
+          done({ ok: true });
+          return;
+        }
+        if (code === null && !signal) return;
         done({
           ok: false,
           detail: signal ? `killed by ${signal}` : `exited ${code}`,
         });
       });
-      // Catch immediate spawn / early exit failures; do not wait for recreate.
+      // Grace period: catch slow early failures. If still running (rare for handoff),
+      // treat as scheduled — do not claim success at 250ms while exit is pending.
       setTimeout(() => {
-        if (typeof child.exitCode === "number" && child.exitCode !== 0) {
-          done({ ok: false, detail: `exited ${child.exitCode}` });
+        if (settled) return;
+        if (typeof child.exitCode === "number") {
+          if (child.exitCode === 0) done({ ok: true });
+          else done({ ok: false, detail: `exited ${child.exitCode}` });
           return;
         }
         done({ ok: true });
-      }, 250);
+      }, 2000);
     } catch (err) {
       resolve({ ok: false, detail: err instanceof Error ? err.message : String(err) });
     }
