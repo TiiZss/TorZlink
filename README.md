@@ -174,6 +174,14 @@ docker compose -f packaging/docker/docker-compose.yml run --rm -it torzlink
 
 **Docker Desktop:** `docker compose run --rm` creates a one-off container (name like `torzlink-torzlink-run-…`) that only appears under **Containers** while the TUI is running. When you quit or the app exits, `--rm` removes it immediately — that is expected, not a bug.
 
+#### Windows + Docker Desktop
+
+- Prefer PowerShell bind mounts with `"${PWD}/downloads:/downloads"` or `%cd%\downloads` — avoid mixing WSL paths (`/mnt/c/...`) with Desktop’s Linux VM unless you intend WSL2 integration.
+- Ensure `docker` is on PATH (Docker Desktop → Settings → “Use Docker Compose V2”). Restart the terminal after install.
+- Keep `.env` and shell scripts as **UTF-8 LF** (Git `core.autocrlf` may rewrite; launchers tolerate CRLF but compose/`sh` scripts should be LF).
+- File sharing: enable the drive that holds the repo under Docker Desktop → Resources → File sharing, or downloads will appear empty inside the container.
+- Interactive TUI needs a real TTY: `docker compose … run --rm -it` (or `npm run docker:run` / launcher **Docker**). Smoke checklist: [docs/smoke-docker-windows.md](docs/smoke-docker-windows.md).
+
 Build the image manually (tags it as `torzlink:latest`):
 
 ```sh

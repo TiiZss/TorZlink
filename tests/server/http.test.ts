@@ -351,6 +351,44 @@ describe("HTTP API", () => {
     }
   });
 
+  it("jails per-item dir under TORZLINK_DOWNLOAD_ROOT when DOWNLOAD_DIR unset", async () => {
+    delete process.env.TORZLINK_DOWNLOAD_DIR;
+    const root = path.join(stateDir, "media-root");
+    await mkdir(root, { recursive: true });
+    process.env.TORZLINK_DOWNLOAD_ROOT = root;
+    const runtime = await createTorzlinkRuntime();
+    try {
+      runtime.config.downloadDir = path.join(root, "torzlink");
+      const handler: http.RequestListener = (req, res) => {
+        void handleRequest(req, res, runtime, publicDir);
+      };
+      const hash = "ccddeeff00112233445566778899aabbccddeeff";
+      const outside = path.join(stateDir, "not-under-root");
+      const denied = await request(
+        handler,
+        "POST",
+        "/api/downloads",
+        JSON.stringify({ input: hash, dir: outside }),
+      );
+      expect(denied.status).toBe(403);
+      const ok = await request(
+        handler,
+        "POST",
+        "/api/downloads",
+        JSON.stringify({ input: hash, dir: "shows" }),
+      );
+      expect(ok.status).toBe(201);
+      expect(await realpath((ok.json as { dir: string }).dir)).toBe(
+        await realpath(path.join(runtime.config.downloadDir, "shows")),
+      );
+      await request(handler, "POST", `/api/downloads/${hash}/cancel`, "{}");
+    } finally {
+      runtime.dispose();
+      delete process.env.TORZLINK_DOWNLOAD_ROOT;
+      process.env.TORZLINK_DOWNLOAD_DIR = path.join(stateDir, "downloads");
+    }
+  });
+
   it("rejects per-item dir that escapes jail via symlink", async () => {
     const downloadRoot = path.join(stateDir, "downloads");
     const outside = path.join(stateDir, "outside-target");

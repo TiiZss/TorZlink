@@ -60,8 +60,8 @@ When editing one launcher file, check the other and update this table if behavio
 ### DevOps (do if Docker onboarding still confuses users)
 
 - [ ] Read **DevOps Automator** skill before changing compose / env flow
-- [ ] Consider making `env_file` optional in compose **or** document that empty `.env` is created by launcher (current behavior)
-- [ ] Windows: document Docker Desktop PATH / WSL2 notes in README if users report `docker not found`
+- [x] `env_file` optional in compose (`required: false`) + launcher creates empty `.env`
+- [x] Windows: Docker Desktop PATH / WSL2 / file sharing notes in README + `docs/smoke-docker-windows.md`
 
 ### SRE / UX (do if error reports continue)
 
