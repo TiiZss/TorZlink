@@ -345,23 +345,32 @@ export function App({
 
   const copyMagnet = useCallback((input: { name: string; magnet: string; infoHash?: string }) => {
     void (async () => {
-      const meta = { name: input.name, infoHash: input.infoHash };
-      const ok = await writeClipboard(input.magnet, meta);
+      const safe = sanitizeDownloadInput({
+        id: input.infoHash ?? "",
+        name: input.name,
+        magnet: input.magnet,
+      });
+      if (!safe) {
+        setNotice(`Couldn't copy magnet for ${truncate(safeDisplayText(input.name), 32)}.`);
+        return;
+      }
+      const meta = { name: safe.name, infoHash: safe.id };
+      const ok = await writeClipboard(safe.magnet, meta);
       if (ok) {
         const saved = lastClipboardFile();
         if (saved) {
           setNotice(`Magnet saved to ${truncate(saved, 48)}`);
         } else {
-          setNotice(`Copied magnet: ${truncate(safeDisplayText(input.name), 60)}`);
+          setNotice(`Copied magnet: ${truncate(safeDisplayText(safe.name), 60)}`);
         }
         notifyMagnetCopied({
-          name: input.name,
-          magnet: input.magnet,
-          infoHash: input.infoHash,
+          name: safe.name,
+          magnet: safe.magnet,
+          infoHash: safe.id,
         });
         return;
       }
-      setNotice(`Couldn't copy magnet for ${truncate(safeDisplayText(input.name), 32)}.`);
+      setNotice(`Couldn't copy magnet for ${truncate(safeDisplayText(safe.name), 32)}.`);
     })();
   }, []);
 
