@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import http from "node:http";
-import { rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createTorzlinkRuntime } from "../../src/core/runtime";
@@ -91,11 +91,12 @@ describe("normalizeSearchQuery", () => {
 });
 
 describe("HTTP API", () => {
-  const stateDir = path.join(tmpdir(), "torzlink-test-state");
+  let stateDir: string;
   let publicDir: string;
 
   beforeEach(async () => {
     publicDir = path.resolve(process.cwd(), "web");
+    stateDir = await mkdtemp(path.join(tmpdir(), "torzlink-http-"));
     process.env.TORZLINK_DISABLE_DOTENV = "1";
     process.env.TORZLINK_SKIP_UPDATE = "1";
     process.env.TORZLINK_STATE_DIR = stateDir;
@@ -104,13 +105,13 @@ describe("HTTP API", () => {
     delete process.env.TORZLINK_NETWORK_MODE;
     delete process.env.TORZLINK_DEPLOY_ENV_FILE;
     delete process.env.TORZLINK_NETWORK_SWITCH_CMD;
-    await rm(path.join(stateDir, "data"), { recursive: true, force: true });
-    await rm(path.join(stateDir, "config"), { recursive: true, force: true });
-    await rm(path.join(stateDir, "downloads"), { recursive: true, force: true });
   });
 
   afterEach(async () => {
     delete process.env.TORZLINK_SERVE_TOKEN;
+    delete process.env.TORZLINK_STATE_DIR;
+    delete process.env.TORZLINK_DOWNLOAD_DIR;
+    await rm(stateDir, { recursive: true, force: true });
   });
 
   it("health and downloads list", async () => {
