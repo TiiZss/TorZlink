@@ -14,6 +14,7 @@ vi.mock("node:child_process", () => ({
     const child = {
       on: vi.fn(),
       unref: vi.fn(),
+      exitCode: null as number | null,
     };
     return child;
   }),
@@ -83,7 +84,12 @@ describe("networkMode", () => {
     expect(spawn).toHaveBeenCalledWith(
       "sh",
       ["/opt/torzlink/torzlink-network-switch.sh", "vpn"],
-      expect.objectContaining({ detached: true, shell: false, stdio: "ignore" }),
+      expect.objectContaining({
+        detached: true,
+        shell: false,
+        stdio: "ignore",
+        env: expect.objectContaining({ TORZLINK_PREV_NETWORK_MODE: "direct" }),
+      }),
     );
     const child = vi.mocked(spawn).mock.results[0]?.value as { unref: ReturnType<typeof vi.fn> };
     expect(child.unref).toHaveBeenCalled();

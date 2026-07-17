@@ -552,6 +552,11 @@ describe("HTTP API", () => {
 
       const redown = await request(handler, "POST", `/api/history/${hash}/redownload`, "{}");
       expect(redown.status).toBe(201);
+      expect(redown.json).toMatchObject({
+        ok: true,
+        id: hash,
+        dir: process.env.TORZLINK_DOWNLOAD_DIR,
+      });
 
       const cancel = await request(handler, "POST", `/api/downloads/${hash}/cancel`, "{}");
       expect(cancel.status).toBe(200);
@@ -560,6 +565,31 @@ describe("HTTP API", () => {
       expect(clear.status).toBe(200);
       const empty = await request(handler, "GET", "/api/history");
       expect(empty.json).toEqual({ items: [] });
+    } finally {
+      runtime.dispose();
+    }
+  });
+
+  it("rejects history redownload when stored dir is outside locked root", async () => {
+    const runtime = await createTorzlinkRuntime();
+    try {
+      const handler: http.RequestListener = (req, res) => {
+        void handleRequest(req, res, runtime, publicDir);
+      };
+      const hash = "aabbccddeeff00112233445566778899aabbccdd";
+      const outside = path.join(stateDir, "outside-hist");
+      runtime.queue.restoreHistory([
+        {
+          id: hash,
+          name: "Outside",
+          magnet: `magnet:?xt=urn:btih:${hash}&dn=Outside`,
+          sizeBytes: 1,
+          dir: outside,
+          completedAt: Date.now(),
+        },
+      ]);
+      const denied = await request(handler, "POST", `/api/history/${hash}/redownload`, "{}");
+      expect(denied.status).toBe(403);
     } finally {
       runtime.dispose();
     }

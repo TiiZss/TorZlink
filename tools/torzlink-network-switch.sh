@@ -53,8 +53,16 @@ COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-torzlink}"
 export COMPOSE_PROJECT_NAME
 
 # Capture previous mode before patching (for rollback if compose up fails).
-prev_mode="$(grep -E '^[[:space:]]*TORZLINK_NETWORK_MODE=' "${ENV_FILE}" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '\r' || true)"
-case "${prev_mode}" in direct|vpn) ;; *) prev_mode=direct ;; esac
+# Prefer TORZLINK_PREV_NETWORK_MODE from the serve process: it patches .env
+# before spawning us, so reading the file alone would see the *target* mode.
+prev_mode="${TORZLINK_PREV_NETWORK_MODE:-}"
+case "${prev_mode}" in
+  direct|vpn) ;;
+  *)
+    prev_mode="$(grep -E '^[[:space:]]*TORZLINK_NETWORK_MODE=' "${ENV_FILE}" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '\r' || true)"
+    case "${prev_mode}" in direct|vpn) ;; *) prev_mode=direct ;; esac
+    ;;
+esac
 
 # Patch .env (idempotent with server-side TORZLINK_DEPLOY_ENV_FILE patch)
 env_owner="$(stat -c '%u:%g' "${ENV_FILE}" 2>/dev/null || echo "1000:10")"
@@ -98,6 +106,7 @@ if [ "${APPLY}" -eq 0 ]; then
     -v "${host_deploy}:/deploy" \
     -e TORZLINK_DEPLOY_DIR=/deploy \
     -e TORZLINK_DEPLOY_HOST_PATH="${host_deploy}" \
+    -e TORZLINK_PREV_NETWORK_MODE="${prev_mode}" \
     -e TORZLINK_COMPOSE_FILE=/deploy/docker-compose.nas.yml \
     -e COMPOSE_PROJECT_NAME=torzlink \
     -e TORZLINK_IMAGE="${img}" \
