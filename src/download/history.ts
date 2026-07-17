@@ -1,6 +1,7 @@
 import { promises as fs, mkdirSync, writeFileSync, renameSync } from "node:fs";
 import path from "node:path";
 import { historyFile } from "../config/paths";
+import { isDirInsideJailSync } from "../config/downloadJail";
 import { sanitizeDownloadInput } from "../sources/magnet";
 import { serializeWrites, writeJsonAtomic } from "../util/atomic";
 import type { SourceId } from "../sources/types";
@@ -48,6 +49,9 @@ function sanitizeHistoryItem(raw: HistoryItem): HistoryItem | null {
     sizeBytes: raw.sizeBytes,
   });
   if (!safe) return null;
+  if (typeof raw.dir === "string" && raw.dir && !isDirInsideJailSync(raw.dir)) {
+    return null;
+  }
   return {
     ...raw,
     id: safe.id,

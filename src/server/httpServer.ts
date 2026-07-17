@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { saveConfig } from "../config/config";
 import { downloadDirLockedByEnv, downloadJailRoot, pathUnderJail } from "../config/downloadJail";
+import { envFlag } from "../config/env-vars";
 import { normalizeDownloadDir } from "../config/folder";
 import { parseTrackers, unknownTrackerHosts } from "../config/trackers";
 import type { TorzlinkRuntime } from "../core/runtime";
@@ -776,9 +777,27 @@ async function handleApiPost(
 }
 
 function clientRateKey(req: IncomingMessage): string {
-  const xf = req.headers["x-forwarded-for"];
-  const forwarded = typeof xf === "string" ? xf.split(",")[0]?.trim() : "";
-  return forwarded || req.socket.remoteAddress || "unknown";
+  // Only trust X-Forwarded-For when explicitly enabled (Traefik / reverse proxy).
+  if (envFlag("TORZLINK_TRUST_PROXY")) {
+    const xf = req.headers["x-forwarded-for"];
+    const forwarded = typeof xf === "string" ? xf.split(",")[0]?.trim() : "";
+    if (forwarded) return forwarded;
+  }
+  return req.socket.remoteAddress || "unknown";
+}
+
+/** Cheap authenticated polls must not share the search/mutation budget. */
+function shouldRateLimit(method: string, pathname: string): boolean {
+  if (method !== "GET") return true;
+  return !(
+    pathname === "/api/downloads" ||
+    pathname === "/api/seeds" ||
+    pathname === "/api/history" ||
+    pathname === "/api/events" ||
+    pathname === "/api/network" ||
+    pathname === "/api/config" ||
+    pathname === "/api/categories"
+  );
 }
 
 function handleSseEvents(
@@ -822,7 +841,7 @@ async function handleApiRoute(
 ): Promise<boolean> {
   if (!requireApiAuth(req, res)) return true;
 
-  if (!checkRateLimit(clientRateKey(req))) {
+  if (shouldRateLimit(method, url.pathname) && !checkRateLimit(clientRateKey(req))) {
     sendJson(res, 429, { error: "rate limit exceeded" });
     return true;
   }
