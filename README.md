@@ -6,7 +6,7 @@ Finding torrents has become frustrating due to misleading ads, redirects, and br
 
 TorZlink solves this problem from the command line. With no initial setup required, it lets you search simultaneously across an indexed catalog of reputable sources. Select your file and download it directly to your local machine—cleanly, quickly, and securely.
 
-> **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink) by [bairon (@baairon)](https://github.com/baairon). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, security hardening, and fixes for headless/container environments. **Latest release:** [v1.7.1](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.1). See [Differences from upstream](#differences-from-upstream), [Acknowledgments](#acknowledgments), and the [Changelog](CHANGELOG.md).
+> **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink) by [bairon (@baairon)](https://github.com/baairon). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, security hardening, and fixes for headless/container environments. **Latest release:** [v1.8.0](https://github.com/TiiZss/TorZlink/releases/tag/v1.8.0). See [Differences from upstream](#differences-from-upstream), [Acknowledgments](#acknowledgments), and the [Changelog](CHANGELOG.md).
 
 ## Get started
 
@@ -254,10 +254,10 @@ Bash/WSL equivalent: `NAS_USER=… PROXY_NET_NAME=… ./tools/deploy-from-dev.sh
 ```sh
 # on the NAS — keep the stack under volume2
 mkdir -p /volume2/docker/torzlink && cd /volume2/docker/torzlink
-git clone --depth 1 --branch v1.7.1 https://github.com/TiiZss/TorZlink.git repo
+git clone --depth 1 --branch v1.8.0 https://github.com/TiiZss/TorZlink.git repo
 cp repo/packaging/docker/.env.nas.example .env
 chmod 600 .env
-# set PROXY_NET_NAME, TORZLINK_IMAGE=ghcr.io/tiizss/torzlink:v1.7.1, TORZLINK_SERVE_TOKEN=…
+# set PROXY_NET_NAME, TORZLINK_IMAGE=ghcr.io/tiizss/torzlink:v1.8.0, TORZLINK_SERVE_TOKEN=…
 export TORZLINK_DEPLOY_DIR=/volume2/docker/torzlink
 bash repo/tools/deploy-nas.sh install
 bash repo/tools/deploy-nas.sh up
@@ -491,7 +491,7 @@ kanban
 
 **Priorities:** 🔜 Next = pick up here ([docs/next-session.md](docs/next-session.md)) · 📋 Planned = broader roadmap · 📋 P2 = quality/maintainability · Security P0/P1 complete as of **v1.6.0**.
 
-**Current release:** [v1.7.1](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.1) — NAS downloads path/ownership + deploy hardening.
+**Current release:** [v1.8.0](https://github.com/TiiZss/TorZlink/releases/tag/v1.8.0) — web launcher, VPN ON/OFF, path jail, magnet hardening.
 
 ### Cut a release
 
