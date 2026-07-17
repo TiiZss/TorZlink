@@ -1,6 +1,6 @@
 # Next session — TorZlink backlog & plan
 
-Session wrap-up **2026-07-17 (noche)**: PR [#2](https://github.com/TiiZss/TorZlink/pull/2). Traefik labels Gluetun OK. Plan enriquecido (reviews + explore). **Hecho en sesión:** P0-A (`realpath` jail), P0-B (switch preflight/rollback), P0-C (mkdir default), P0-D (spawn wait-for-exit).
+Session wrap-up **2026-07-17 (noche)**: PR [#2](https://github.com/TiiZss/TorZlink/pull/2). Traefik labels Gluetun OK. Plan enriquecido. **Hecho:** P0-A…D (jail/switch), **P0-1** copy TUI sanitize, **P0-2** scrapers rebuild magnet, **P0-4** Traefik auth docs.
 
 ## Gates (antes de merge / tag)
 
@@ -53,10 +53,10 @@ Session wrap-up **2026-07-17 (noche)**: PR [#2](https://github.com/TiiZss/TorZli
 | P0-B | Switch: preflight antes de patch + rollback | ~~`.env` desync~~ | **DONE** `patch_env_mode` / `die_restore` | `torzlink-network-switch.sh` | `engineering-devops-automator` |
 | P0-C | Crear `downloadDir` por defecto en API | ~~sin mkdir~~ | **DONE** (via ensure) | `httpServer.ts` | `engineering-backend-architect` |
 | P0-D | `startSwitchCmd` wait-for-exit | ~~false OK @250ms~~ | **DONE** exit/2s grace | `networkMode.ts` | `engineering-backend-architect` |
-| P0-1 | Sanitizar copy-magnet en TUI | Paridad seguridad con API | `sanitizeDownloadInput` antes de clipboard/Telegram | `src/ui/App.tsx`, `Results.tsx`, `tests/security/` | `security-senior-secops` |
-| P0-2 | Anti-corrupción scrapers | Magnets crudos en resultados | Rebuild `buildMagnet(hash, name)` al parsear | `src/sources/*.ts`, `tests/sources/` | `security-appsec-engineer` |
-| P0-3 | `TORZLINK_DOWNLOAD_ROOT` jail global | Jail solo si env download dir | Root opcional + realpath en config `downloadDir` y `dir` | `httpServer.ts`, `config/`, `.env.example` | `security-architect` |
-| P0-4 | Docs Traefik auth + token | Operadores creen que Traefik basta | README + labels.md + link ADR-001 | `README.md`, `traefik-gluetun-*.md` | `security-architect` |
+| P0-1 | Sanitizar copy-magnet en TUI | ~~raw clipboard~~ | **DONE** `sanitizeDownloadInput` en `copyMagnet` | `App.tsx`, `regression.test.ts` | `security-senior-secops` |
+| P0-2 | Anti-corrupción scrapers | ~~magnets crudos~~ | **DONE** sanitize en x1337/rss/eztv/subsplease | `src/sources/*`, `rss.test.ts` | `security-appsec-engineer` |
+| P0-3 | `TORZLINK_DOWNLOAD_ROOT` jail global | Jail solo si env download dir | Root opcional + realpath en config | `httpServer.ts`, `config/`, `.env.example` | `security-architect` |
+| P0-4 | Docs Traefik auth + token | ~~Traefik ≠ auth~~ | **DONE** README + labels.md | `README.md`, `traefik-gluetun-*.md` | `security-architect` |
 
 ### P1 — producto / HTTP / CI
 

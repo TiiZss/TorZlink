@@ -22,3 +22,17 @@ labels:
 ```
 
 Also ensure Pi-hole (or your LAN DNS) resolves `torzlink.lan` to Traefik's LAN IP.
+
+## Auth (Traefik ≠ Bearer)
+
+These labels only publish the Host rule. They do **not** replace `TORZLINK_SERVE_TOKEN`:
+
+- **Bearer** — required for `/api/*` (and VPN switch). Set in the TorZlink `.env`; the web UI prompts for it.
+- **Traefik middleware** (optional) — add `basicAuth` / Authelia on the router if the LAN is not fully trusted. Example sketch:
+
+```yaml
+  - "traefik.http.routers.torzlink-vpn.middlewares=torzlink-auth"
+  - "traefik.http.middlewares.torzlink-auth.basicauth.users=admin:$$apr1$$…"
+```
+
+Keep Bearer even with Traefik auth: containers on `proxy_net` bypass the edge middleware.

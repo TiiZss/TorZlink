@@ -111,7 +111,15 @@ describe("HTTP API", () => {
     delete process.env.TORZLINK_SERVE_TOKEN;
     delete process.env.TORZLINK_STATE_DIR;
     delete process.env.TORZLINK_DOWNLOAD_DIR;
-    await rm(stateDir, { recursive: true, force: true });
+    // Windows can leave the state dir briefly non-empty after dispose.
+    for (let i = 0; i < 5; i++) {
+      try {
+        await rm(stateDir, { recursive: true, force: true });
+        break;
+      } catch {
+        await new Promise((r) => setTimeout(r, 50 * (i + 1)));
+      }
+    }
   });
 
   it("health and downloads list", async () => {
@@ -297,7 +305,7 @@ describe("HTTP API", () => {
         JSON.stringify({ input: hash, dir: "movies" }),
       );
       expect(add.status).toBe(201);
-      const expectedDir = path.join(runtime.config.downloadDir, "movies");
+      const expectedDir = await realpath(path.join(runtime.config.downloadDir, "movies"));
       expect(add.json).toMatchObject({ ok: true, id: hash, dir: expectedDir });
       const list = await request(handler, "GET", "/api/downloads");
       expect((list.json as { items: { id: string; dir: string }[] }).items[0]).toMatchObject({
@@ -589,7 +597,7 @@ describe("HTTP API", () => {
       expect(redown.json).toMatchObject({
         ok: true,
         id: hash,
-        dir: process.env.TORZLINK_DOWNLOAD_DIR,
+        dir: await realpath(process.env.TORZLINK_DOWNLOAD_DIR!),
       });
 
       const cancel = await request(handler, "POST", `/api/downloads/${hash}/cancel`, "{}");

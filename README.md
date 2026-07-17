@@ -190,7 +190,7 @@ On Linux/macOS, replace `%cd%` with `$(pwd)`.
 
 ### Web UI (`torzlink serve`)
 
-LAN admin UI + JSON API (search + download queue). No in-app login — trust Traefik / your LAN (see [ADR-001](docs/adr/001-trust-model.md)).
+LAN admin UI + JSON API (search + download queue). No in-app login — treat the UI as an **admin surface** (see [ADR-001](docs/adr/001-trust-model.md)). Traefik host routing alone is **not** authentication: anything on `proxy_net` can still call `:8787` east-west. Always set `TORZLINK_SERVE_TOKEN` on NAS / shared networks; optionally add Traefik `basicAuth` / Authelia in front of `torzlink.lan` for defense in depth.
 
 ```sh
 ./torzlink.sh --web
