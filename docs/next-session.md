@@ -2,13 +2,22 @@
 
 Session wrap-up **2026-08-19**: **v1.8.1** released, smoked, NAS deployed.
 
+## Production URLs (NAS / Traefik)
+
+| Host | Uso |
+| --- | --- |
+| http://torzlink.lan | UI / API en LAN (DNS Pi-hole → Traefik) |
+| http://torzlink.internal | UI / API en red interna |
+
+Health: `/health` en cualquiera de los dos (p. ej. `http://torzlink.lan/health`). Bearer token requerido en `/api/*`.
+
 ## Gates (all green)
 
 | Gate | Estado |
 | --- | --- |
 | CI / Release | **DONE** — [Release](https://github.com/TiiZss/TorZlink/actions/runs/32237661145) |
 | Smoke GHCR | **DONE** — `tools/smoke-serve.ps1` |
-| Deploy NAS | **DONE** — `torzlink:v1.8.1`, `http://torzlink.lan/health` |
+| Deploy NAS | **DONE** — `torzlink:v1.8.1` |
 
 ## Sync snapshot
 
@@ -17,6 +26,7 @@ Session wrap-up **2026-08-19**: **v1.8.1** released, smoked, NAS deployed.
 | `main` / tag | `v1.8.1` @ `c561fd4` |
 | GHCR | `ghcr.io/tiizss/torzlink:v1.8.1` |
 | NAS | `TORZLINK_IMAGE=torzlink:v1.8.1` |
+| Prod URLs | `torzlink.lan`, `torzlink.internal` |
 
 ## P3 — next product/ops (optional)
 

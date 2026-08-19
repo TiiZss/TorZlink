@@ -124,7 +124,7 @@ On failure: run `ci-investigator`, fix, move tag only if release never succeeded
    .\tools\deploy-from-dev.ps1 -SkipBuild -ImageTag vX.Y.Z
    ```
 
-4. Verify NAS via Traefik: `http://torzlink.lan/health` → `{"ok":true,…}`.  
+4. Verify NAS via Traefik: `http://torzlink.lan/health` or `http://torzlink.internal/health` → `{"ok":true,…}`.  
    Do **not** assume `curl 127.0.0.1:8787` on the NAS host works (port often only on the proxy network).
 
 ### Docker / CI session

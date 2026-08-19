@@ -39,7 +39,7 @@ Fix Critical/High findings before tagging.
 
 - Smoke published image: `.\tools\smoke-serve.ps1` (not ad-hoc SSE / wrong JSON fields)
 - NAS: `docker tag ghcr.io/tiizss/torzlink:vX.Y.Z torzlink:vX.Y.Z` then `deploy-from-dev.ps1 -SkipBuild`
-- Verify `http://torzlink.lan/health` (not host loopback unless port is published)
+- Verify `http://torzlink.lan/health` or `http://torzlink.internal/health` (not host loopback unless port is published)
 
 ## Session close
 
