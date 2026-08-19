@@ -13,6 +13,7 @@ Web UI layout polish for the library queue adders on narrow panels.
 ### Fixed
 
 - **Web library forms** — magnet / `.torrent` inputs stack above compact action buttons (`row-actions`) so controls no longer crush or overgrow in the narrow queue column
+- **Docker runtime** — remove bundled `npm`/`npx` from the image (unused; clears CRITICAL `tar` CVE in the Node base npm tree for Trivy)
 
 ### Changed
 

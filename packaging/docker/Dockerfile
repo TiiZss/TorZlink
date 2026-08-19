@@ -22,11 +22,16 @@ RUN npm run build
 # ── runtime: minimal image with clipboard helper ────────────────────────────
 FROM node:22-alpine AS runtime
 # docker-cli: used only when NAS compose mounts the Docker socket for VPN↔direct switch
+# Drop the image's bundled npm/npx — unused at runtime and Trivy-flagged (e.g. CVE in npm's tar).
 RUN apk add --no-cache tini xclip docker-cli docker-cli-compose \
   && addgroup -S torzlink \
   && adduser -S torzlink -G torzlink \
   && mkdir -p /data /downloads \
-  && chown -R torzlink:torzlink /data /downloads
+  && chown -R torzlink:torzlink /data /downloads \
+  && rm -rf /usr/local/lib/node_modules/npm \
+            /usr/local/bin/npm \
+            /usr/local/bin/npx \
+            /usr/local/bin/corepack
 WORKDIR /app
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
