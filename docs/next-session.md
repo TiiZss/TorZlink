@@ -1,15 +1,22 @@
 # Next session — TorZlink backlog & plan
 
-Session wrap-up **2026-08-19**: **v1.8.1** web library form layout; align GitHub + GHCR + NAS.
+Session wrap-up **2026-08-19**: **v1.8.1** released, smoked, NAS deployed.
 
-## Gates
+## Gates (all green)
 
 | Gate | Estado |
 | --- | --- |
-| CI / merge | in flight with release |
-| Release **v1.8.1** | tagging |
-| Smoke GHCR | pending |
-| Deploy NAS | pending (`torzlink:v1.8.1`) |
+| CI / Release | **DONE** — [Release](https://github.com/TiiZss/TorZlink/actions/runs/32237661145) |
+| Smoke GHCR | **DONE** — `tools/smoke-serve.ps1` |
+| Deploy NAS | **DONE** — `torzlink:v1.8.1`, `http://torzlink.lan/health` |
+
+## Sync snapshot
+
+| Surface | Value |
+| --- | --- |
+| `main` / tag | `v1.8.1` @ `c561fd4` |
+| GHCR | `ghcr.io/tiizss/torzlink:v1.8.1` |
+| NAS | `TORZLINK_IMAGE=torzlink:v1.8.1` |
 
 ## P3 — next product/ops (optional)
 
@@ -21,8 +28,6 @@ Session wrap-up **2026-08-19**: **v1.8.1** web library form layout; align GitHub
 | P3-4 | Pin GitHub Actions that still warn on Node 20 → Node 24 |
 | P3-5 | Web UI feature parity (categories / history / seeding polish) |
 
-## Reference
+## Notes from this release
 
-- Skills / gates: [agent-workflow.md](agent-workflow.md)
-- Smoke: `.\tools\smoke-serve.ps1`
-- Deploy: GHCR retag + `deploy-from-dev.ps1 -SkipBuild`
+- First Release attempt failed Trivy CRITICAL on base-image `npm`→`tar` (CVE-2026-59873). Fixed by stripping unused `npm`/`npx` from runtime Dockerfile; retagged `v1.8.1` (release had not published GHCR).
