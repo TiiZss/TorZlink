@@ -6,7 +6,7 @@ Finding torrents has become frustrating due to misleading ads, redirects, and br
 
 TorZlink solves this problem from the command line. With no initial setup required, it lets you search simultaneously across an indexed catalog of reputable sources. Select your file and download it directly to your local machine—cleanly, quickly, and securely.
 
-> **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink) by [bairon (@baairon)](https://github.com/baairon). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, security hardening, and fixes for headless/container environments. **Latest release:** [v1.8.0](https://github.com/TiiZss/TorZlink/releases/tag/v1.8.0). See [Differences from upstream](#differences-from-upstream), [Acknowledgments](#acknowledgments), and the [Changelog](CHANGELOG.md).
+> **This repository** — [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) is a maintained fork of [baairon/torlink](https://github.com/baairon/torlink) by [bairon (@baairon)](https://github.com/baairon). Same TUI and sources; this fork adds Docker, auto-setup for developers, CI, security hardening, and fixes for headless/container environments. **Latest release:** [v1.8.1](https://github.com/TiiZss/TorZlink/releases/tag/v1.8.1). See [Differences from upstream](#differences-from-upstream), [Acknowledgments](#acknowledgments), and the [Changelog](CHANGELOG.md).
 
 ## Get started
 
@@ -254,10 +254,10 @@ Bash/WSL equivalent: `NAS_USER=… PROXY_NET_NAME=… ./tools/deploy-from-dev.sh
 ```sh
 # on the NAS — keep the stack under volume2
 mkdir -p /volume2/docker/torzlink && cd /volume2/docker/torzlink
-git clone --depth 1 --branch v1.8.0 https://github.com/TiiZss/TorZlink.git repo
+git clone --depth 1 --branch v1.8.1 https://github.com/TiiZss/TorZlink.git repo
 cp repo/packaging/docker/.env.nas.example .env
 chmod 600 .env
-# set PROXY_NET_NAME, TORZLINK_IMAGE=ghcr.io/tiizss/torzlink:v1.8.0, TORZLINK_SERVE_TOKEN=…
+# set PROXY_NET_NAME, TORZLINK_IMAGE=ghcr.io/tiizss/torzlink:v1.8.1, TORZLINK_SERVE_TOKEN=…
 export TORZLINK_DEPLOY_DIR=/volume2/docker/torzlink
 bash repo/tools/deploy-nas.sh install
 bash repo/tools/deploy-nas.sh up
@@ -420,6 +420,7 @@ kanban
     Web UI torzlink serve search plus queue API
     NAS deploy Traefik direct vpn switch deploy-nas.sh
     Tag v1.8.0 jail VPN switch SSE Zod rate-limit release harden
+    Tag v1.8.1 narrow-panel library form layout
     smoke-serve.ps1 GHCR smoke plus NAS deploy SkipBuild
   column Next session
     Sidecar VPN switch without Docker socket in BT container
@@ -444,7 +445,7 @@ kanban
 | ✅ Done | Docker | Env-based paths and clipboard for headless |
 | ✅ Done | Runtime | WebTorrent NAT/UTP hardening in containers |
 | ✅ Done | CI | Matrix Linux / macOS / Windows + Docker build + launcher smoke |
-| ✅ Done | Release | Workflow (`.github/workflows/release.yml`) + **v1.8.0** |
+| ✅ Done | Release | Workflow (`.github/workflows/release.yml`) + **v1.8.1** |
 | ✅ Done | Docs | Changelog, troubleshooting, upstream diff, security roadmap |
 | ✅ Done | UX | Root launchers, TorZlink branding, truecolor in Docker |
 | ✅ Done | Telegram | `.magnet` attachments on copy/start; completion summary without magnet URI |
@@ -461,6 +462,7 @@ kanban
 | ✅ Done | Release | v1.7.0 published — [GitHub Release](https://github.com/TiiZss/TorZlink/releases/tag/v1.7.0) + GHCR `:v1.7.0` / `:latest` |
 | ✅ Done | Release | v1.7.1 — NAS `TORZLINK_DOWNLOADS_HOST` + PUID/PGID + deploy-from-dev fixes |
 | ✅ Done | Release | v1.8.0 — web launcher, VPN switch, jail/SSE/Zod, smoke-serve + NAS deploy |
+| ✅ Done | Release | v1.8.1 — narrow library panel magnet/.torrent form layout |
 | ✅ Done | Docs | Agent workflow — [docs/agent-workflow.md](docs/agent-workflow.md) + `npm run pre-release` |
 | ✅ Done | Product | Web UI + API (`torzlink serve`) — search + download queue (MVP) |
 | ✅ Done | Ops | NAS deploy — Traefik v3, `TORZLINK_NETWORK_MODE=direct\|vpn`, `tools/deploy-nas.sh` |
@@ -484,7 +486,7 @@ kanban
 
 **Priorities:** 🔜 Next = pick up here ([docs/next-session.md](docs/next-session.md)) · 📋 Planned = broader roadmap · 📋 P2 = quality/maintainability · Security P0/P1 complete as of **v1.6.0**.
 
-**Current release:** [v1.8.0](https://github.com/TiiZss/TorZlink/releases/tag/v1.8.0) — web launcher, VPN ON/OFF, path jail, magnet hardening.
+**Current release:** [v1.8.1](https://github.com/TiiZss/TorZlink/releases/tag/v1.8.1) — narrow library panel magnet/.torrent form layout.
 
 ### Cut a release
 
@@ -492,13 +494,13 @@ After merging to [TiiZss/TorZlink](https://github.com/TiiZss/TorZlink) `main`, b
 
 ```sh
 npm run pre-release    # tests, SBOM, Docker smoke — see docs/agent-workflow.md
-git tag v1.8.0
-git push origin v1.8.0
+git tag v1.8.1
+git push origin v1.8.1
 ```
 
 Agents: run `review-security` and `review-bugbot` before tagging; monitor the Release workflow after push ([docs/agent-workflow.md](docs/agent-workflow.md)).
 
-The `release` workflow runs tests, publishes `ghcr.io/tiizss/torzlink:latest` and `ghcr.io/tiizss/torzlink:v1.8.0`, attaches `sbom.cdx.json`, and opens a GitHub Release with notes from [CHANGELOG.md](CHANGELOG.md).
+The `release` workflow runs tests, publishes `ghcr.io/tiizss/torzlink:latest` and `ghcr.io/tiizss/torzlink:v1.8.1`, attaches `sbom.cdx.json`, and opens a GitHub Release with notes from [CHANGELOG.md](CHANGELOG.md).
 
 ## Acknowledgments
 
