@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.8.1] — 2026-08-19
+
+Web UI layout polish for the library queue adders on narrow panels.
+
+### Fixed
+
+- **Web library forms** — magnet / `.torrent` inputs stack above compact action buttons (`row-actions`) so controls no longer crush or overgrow in the narrow queue column
+
+### Changed
+
+- Ops: `tools/smoke-serve.ps1` + session-close checklist (shipped in docs on `main`; included here for release tagging)
+
 ## [1.8.0] — 2026-07-17
 
 Web launcher + VPN ON/OFF without redeploy, download path jail, magnet anti-corruption, and release/CI supply-chain hardening.

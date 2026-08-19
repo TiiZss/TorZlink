@@ -139,7 +139,7 @@
           </div>
           <div class="panel-body">
             <div id="lib-queue" class="lib-pane" data-lib-pane="queue">
-              <form id="magnet-form" class="row">
+              <form id="magnet-form" class="row add-form">
                 <label class="prompt-field">
                   <span class="caret">+</span>
                   <input
@@ -150,10 +150,12 @@
                     autocomplete="off"
                   />
                 </label>
-                <button type="submit">Añadir</button>
-                <button type="submit" class="secondary" data-ask-dir="1" title="Elegir carpeta (como D en la TUI)">A carpeta…</button>
+                <div class="row-actions">
+                  <button type="submit">Añadir</button>
+                  <button type="submit" class="secondary" data-ask-dir="1" title="Elegir carpeta (como D en la TUI)">A carpeta…</button>
+                </div>
               </form>
-              <form id="torrent-form" class="row torrent-row">
+              <form id="torrent-form" class="row add-form torrent-row">
                 <label class="prompt-field file-field">
                   <span class="caret">.t</span>
                   <input
@@ -163,8 +165,10 @@
                     accept=".torrent,application/x-bittorrent"
                   />
                 </label>
-                <button type="submit">Subir .torrent</button>
-                <button type="submit" class="secondary" data-ask-dir="1">A carpeta…</button>
+                <div class="row-actions">
+                  <button type="submit">Subir .torrent</button>
+                  <button type="submit" class="secondary" data-ask-dir="1">A carpeta…</button>
+                </div>
               </form>
               <ul id="queue" class="list"></ul>
             </div>
