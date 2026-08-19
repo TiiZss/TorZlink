@@ -48,5 +48,6 @@ docker run --rm -p 8788:8787 -e TORZLINK_SERVE_TOKEN=smoke -e TORZLINK_SKIP_UPDA
 
 ## NAS after deploy
 
-- Health via Traefik: `http://torzlink.example.internal/health`
+- Production hosts (Traefik): `http://torzlink.example.internal` and `http://torzlink.example.internal`
+- Health: `/health` on either host
 - Confirm `docker ps` image tag matches the release (`torzlink:vX.Y.Z`)
